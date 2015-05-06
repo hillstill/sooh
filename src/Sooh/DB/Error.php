@@ -1,5 +1,5 @@
 <?php
-namespace Sooh\DB\Base;
+namespace Sooh\DB;
 /**
  * @author Simon Wang <sooh_simon@163.com> 
  */

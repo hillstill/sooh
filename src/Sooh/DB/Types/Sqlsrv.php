@@ -1,7 +1,7 @@
 <?php
 namespace Sooh\DB\Types;
 
-use \Sooh\DB\Base\Error as sooh_dbErr;
+use \Sooh\DB\Error as sooh_dbErr;
 use \Sooh\DB\Base\Field as sooh_dbField;
 use \Sooh\DB\Base\Table as sooh_dbTable;
 use \Sooh\DB\Base\SQLDefine as sooh_sql;
@@ -9,9 +9,10 @@ use \Sooh\DB\Broker as sooh_broker;
 use \Sooh\Base\Trace as sooh_trace;
 
 /**
+ * @todo ensureObj（） setFieldDef（） getRecordsRand（） 等多处尚未实现
  * @author Simon Wang <sooh_simon@163.com> 
  */
-class Mysql implements \Sooh\DB\Interfaces\All
+class Sqlsrv implements \Sooh\DB\Interfaces\All
 {
 	public function kvoFieldSupport(){return true;}
 	public function kvoLoad($obj, $fields,$arrPkey)
@@ -77,9 +78,9 @@ class Mysql implements \Sooh\DB\Interfaces\All
 		$this->objForCreateWhere=$tmp;
 		return $bak;
 	}
-	/**
-	 * @return sooh_dbTable
-	 */
+/**
+ * @return sooh_dbTable
+ */		
 	private function _fmtObj($obj)
 	{
 		if(is_string($obj)){
@@ -93,37 +94,44 @@ class Mysql implements \Sooh\DB\Interfaces\All
 				switch($n){
 					case 1:
 						$this->objForCreateWhere = new sooh_dbTable;
-						$this->objForCreateWhere->db = $this->_lastDB;
+						$this->objForCreateWhere->db = trim($this->_lastDB,'.dbo').'.dbo';
 						$this->objForCreateWhere->name = $obj;
 						$this->objForCreateWhere->fullname = $this->objForCreateWhere->db.'.'.$this->objForCreateWhere->name;
 						return $this->objForCreateWhere;
 					case 2:
 						//$this->dbCurrent($tmp[0]);
 						$this->objForCreateWhere = new sooh_dbTable;
-						$this->objForCreateWhere->db = $tmp[0];
+						$this->_lastDB=$this->objForCreateWhere->db = trim($tmp[0],'.dbo').'.dbo';
 						$this->objForCreateWhere->name = $tmp[1];
 						$this->objForCreateWhere->fullname = $this->objForCreateWhere->db.'.'.$this->objForCreateWhere->name;
 						return $this->objForCreateWhere;
+					case 3:
+						$this->objForCreateWhere = new sooh_dbTable;
+						$this->_lastDB=$this->objForCreateWhere->db = $tmp[0].'.'.$tmp[1];
+						$this->objForCreateWhere->name = $tmp[2];
+						$this->objForCreateWhere->fullname = $this->objForCreateWhere->db.'.'.$this->objForCreateWhere->name;
+						return $this->objForCreateWhere;
 					default :
-						throw new \ErrorException('objname format not support:'. var_export($obj,true));
-					}
-				}else{
-			return $obj;
+						throw new \ErrorException('objname format not support'. var_export($obj,true));
+				}
+				
+			}else{
+				return $obj;
 			}
 		}else return $this->objForCreateWhere = $obj;
 	}
-	protected $objForCreateWhere=null; 
+		protected $objForCreateWhere=null; 
 	private $_lastDB;
 	protected function connect()
 	{
 		$conf= $this->_connection;
 		if(empty($conf))throw new \ErrorException('disconnection called already?');
 		$this->_lastCmd = new sooh_sql();
-		$this->_lastCmd->server = $conf['host'].':'.$conf['port'];
+		$this->_lastCmd->server = $conf['host'];//.':'.$conf['port'];
 		$defaultDB = $conf['name'];
 		unset($conf['dbEnums']);
 		if(sooh_trace::needsWrite('Sooh\DB\Broker'))sooh_trace::str("db-connect:".json_encode($conf));
-		$this->_connection = mysqli_connect($conf['host'], $conf['user'], $conf['pass'], null, $conf['port']);
+		$this->_connection = sqlsrv_connect($conf['host'],array("UID"=>$conf['user'],"PWD"=>$conf['pass']) );
 		
 		$this->_chkErr();
 		$this->dbCurrent($defaultDB);
@@ -133,7 +141,7 @@ class Mysql implements \Sooh\DB\Interfaces\All
 	{
 		if(is_array($this->_connection))$this->_connection=null;
 		else {
-			mysqli_close($this->_connection);
+			sqlsrv_close($this->_connection);
 			$this->_connection=array();
 		}
 		$this->_lastCmd=null;
@@ -143,9 +151,9 @@ class Mysql implements \Sooh\DB\Interfaces\All
 	public function trans_begin() {
 		if($this->oldAutoCommit===null){
 			$rs0 = $this->_query('SELECT @@AUTOCOMMIT');
-			$r = mysqli_fetch_row($rs0);
+			$r = sqlsrv_fetch_array($rs0,SQLSRV_FETCH_NUMERIC);
 			$this->_chkErr();
-			mysqli_free_result($rs0);
+			sqlsrv_free_stmt($rs0);
 			if(is_array($r)){
 				$this->oldAutoCommit= $r[0]-0;
 				$this->flgTransaction=true;
@@ -172,15 +180,18 @@ class Mysql implements \Sooh\DB\Interfaces\All
 	{
 		$obj = $this->_fmtObj($obj);
 		$obj->autoInc = $fieldAuto;
+		
 		if($ignoreExists)sooh_dbErr::$maskSkipTheseError = sooh_dbErr::duplicateKey;
 		$this->_lastCmd->dowhat = "insert";
 		$this->_lastCmd->tablenamefull = $obj->fullname;
 		
 		if($fieldAuto!==null && isset($fields[$fieldAuto]) && empty($fields[$fieldAuto])) unset($fields[$fieldAuto]);
 		$this->_lastCmd->field = $fields;
-
-		$this->_query(null);
-		return $this->getLastInsertId($obj);
+		
+		$rset=$this->_query(null);
+		$rs = sqlsrv_rows_affected($rset);
+		if($rs>0)return $this->getLastInsertId($obj);
+		else return false;
 	}
 	public function addLog($obj, $fields)
 	{
@@ -196,8 +207,11 @@ class Mysql implements \Sooh\DB\Interfaces\All
 	 */
 	protected function getLastInsertId($obj)
 	{
-		$newid = mysqli_insert_id($this->_connection);
-		if ($newid) return $newid;
+		$rs0 = $this->_query("select SCOPE_IDENTITY()");//'{$obj->fullname}'
+		$r = sqlsrv_fetch_array($rs0,SQLSRV_FETCH_NUMERIC);
+		$this->_chkErr();
+		sqlsrv_free_stmt($rs0);
+		if(is_array($r) && $r[0]!==null)return $r[0];
 		else return true;
 	}
 	public function updRecords($obj, $fields, $where=null, $other=null)
@@ -208,29 +222,28 @@ class Mysql implements \Sooh\DB\Interfaces\All
 		$this->_lastCmd->field =$fields;
 		$this->_lastCmd->where = $this->_fmtWhere($where);
 		$this->_lastCmd->orderby = $other;
-		$this->_query(null);
+		$rset=$this->_query(null);
 		$this->_chkErr();
-		$rs = mysqli_affected_rows($this->_connection);
+		$rs = sqlsrv_rows_affected($rset);
 		if ($rs ==0) return true;
 		else return $rs;
 	}
 	
 	public function getRecordsRand($obj, $fields, $where=null, $orderby=null,$num=null)
 	{
-/*
-		$obj = $this->_fmtObj($obj);
-		if(is_array($fields))$fields=  implode (',', $fields);
-		$sql = "select $fields from ".$obj->fullname." " . $this->_fmtWhere($where);
-		$sql.=$this->_fmtFinalPart($orderby.' order by RAND()',$num);
-		$rs0 = $this->_query($sql);
-		$rs=array();
-		while (null!==($r = mysqli_fetch_assoc($rs0))){
-			$this->_chkErr();
-			$rs[]=$r;
-		}
-		mysqli_free_result($rs0);
-		return $rs;
-*/
+		//$obj = $this->_fmtObj($obj);
+		//if(is_array($fields))$fields=  implode (',', $fields);
+		//$sql = "select $fields from ".$obj->fullname." " . $this->_fmtWhere($where);
+		//$sql.=$this->_fmtFinalPart($orderby.' order by RAND()',$num);
+		throw new \Exception('todo:Rand() not support yet');
+//		$rs0 = $this->_query(null);
+//		$rs=array();
+//		while (null!==($r = sqlsrv_fetch_array($rs0,SQLSRV_FETCH_ASSOC))){
+//			$this->_chkErr();
+//			$rs[]=$r;
+//		}
+//		sqlsrv_free_stmt($rs0);
+//		return $rs;
 	}
 	public function getRecords($obj, $fields, $where=null, $orderby=null,$pagesize=null,$rsfrom=0)
 	{
@@ -244,14 +257,13 @@ class Mysql implements \Sooh\DB\Interfaces\All
 
 		$rs0 = $this->_query(null);
 		$rs=array();
-		while (null!==($r = mysqli_fetch_assoc($rs0))){
+		while (null!==($r = sqlsrv_fetch_array($rs0,SQLSRV_FETCH_ASSOC))){
 			//$this->_chkErr();
 			$rs[]=$r;
 		}
-		mysqli_free_result($rs0);
+		sqlsrv_free_stmt($rs0);
 		return $rs;
-	}
-	
+	}	
 	public function getRecord($obj, $fields, $where=null, $orderby=null)
 	{
 		$obj = $this->_fmtObj($obj);
@@ -263,9 +275,10 @@ class Mysql implements \Sooh\DB\Interfaces\All
 		$this->_lastCmd->fromAndSize=array(0,1);
 
 		$rs0 = $this->_query(null);
-		$r = mysqli_fetch_assoc($rs0);
+
+		$r = sqlsrv_fetch_array($rs0,SQLSRV_FETCH_ASSOC);
 		$this->_chkErr();
-		mysqli_free_result($rs0);
+		sqlsrv_free_stmt($rs0);
 		return $r;
 	}
 	public function getAssoc($obj, $key,$otherfields, $where=null, $orderby=null,$pagesize=null,$rsfrom=0)
@@ -282,11 +295,11 @@ class Mysql implements \Sooh\DB\Interfaces\All
 		
 		$rs0 = $this->_query(null);
 		$rs = array();
-		while (null!==($r = mysqli_fetch_assoc($rs0))){
+		while (null!==($r = sqlsrv_fetch_array($rs0,SQLSRV_FETCH_ASSOC))){
 			//$this->_chkErr();
 			$rs[$r[$key]] = $r;
 		}
-		mysqli_free_result($rs0);
+		sqlsrv_free_stmt($rs0);
 		return $rs;
 	}
 
@@ -302,28 +315,22 @@ class Mysql implements \Sooh\DB\Interfaces\All
 
 		$rs0 = $this->_query(null);
 		$rs = array();
-		while (null!==($r = mysqli_fetch_row($rs0))){
+		while (null!==($r = sqlsrv_fetch_array($rs0,SQLSRV_FETCH_NUMERIC))){
 			//$this->_chkErr();
 			$rs[] = $r[0];
 		}
-		mysqli_free_result($rs0);
+		sqlsrv_free_stmt($rs0);
 		if(is_array($rs))return $rs;
 		else return null;
 	}
 	public function status()
 	{
-		if(is_array($this->_connection))$this->connect();
-		$rs = mysqli_info($this->_connection);
-		$rs0 = $this->_query("show variables like '%char%'");
-		while (null!==($r = mysqli_fetch_row($rs0))){
-			$rs[$r[0]] = $r[1];
-		}
-		return $rs;
+		return array('status'=>'todo');
 	}
 	public function resetAutoIncrement($obj, $newstart=1)
 	{
 		$obj = $this->_fmtObj($obj);
-		$this->_query("alter table $obj AUTO_INCREMENT = $newstart");
+		$this->_query("dbcc checkident($obj->fullname,RESEED,$newstart);");
 	}
 	public function execCustom($arr)
 	{
@@ -342,14 +349,13 @@ class Mysql implements \Sooh\DB\Interfaces\All
 	public function fetchAssocThenFree($result)
 	{
 		$rs=array();
-		while (null!==($r = mysqli_fetch_assoc($result))){
-			//$this->_chkErr();
+		while (null!==($r = sqlsrv_fetch_array($result,SQLSRV_FETCH_ASSOC))){
+			$this->_chkErr();
 			$rs[]=$r;
 		}
-		mysqli_free_result($result);
+		sqlsrv_free_stmt($result);
 		return $rs;
 	}
-	
 	public function getOne($obj, $field, $where=null, $orderby=null)
 	{
 		$obj = $this->_fmtObj($obj);
@@ -361,9 +367,9 @@ class Mysql implements \Sooh\DB\Interfaces\All
 		$this->_lastCmd->fromAndSize=array(0,1);
 		
 		$rs0 = $this->_query(null);
-		$r = mysqli_fetch_row($rs0);
+		$r = sqlsrv_fetch_array($rs0,SQLSRV_FETCH_NUMERIC);
 		$this->_chkErr();
-		mysqli_free_result($rs0);
+		sqlsrv_free_stmt($rs0);
 		if(is_array($r))return $r[0];
 		else return null;
 	}
@@ -379,78 +385,63 @@ class Mysql implements \Sooh\DB\Interfaces\All
 		
 		$rs0 = $this->_query(null);
 		$rs = array();
-		while (null!==($r = mysqli_fetch_row($rs0))){
+		while (null!==($r = sqlsrv_fetch_array($rs0,SQLSRV_FETCH_NUMERIC))){
 			//$this->_chkErr();
 			$rs[$r[0]] = $r[1];
 		}
-		mysqli_free_result($rs0);
+		sqlsrv_free_stmt($rs0);
 		return $rs;
 	}
-	private $fieldForOnDup=null;
 	/**
 	 * 
 	 * @param array $fields
-	 * @param sooh_dbField $_onDup_
+	 * @param sooh_dbField $_ignore_
 	 * @return type
 	 */
-	protected function _fmtField($fields,$_onDup_=null)
+	protected function _fmtField($fields,$_ignore_=null)
 	{
 		if (is_array($fields)){
-			$fieldForOnDup='';
 			$buf = "";
-			$fieldsOnDup = $_onDup_;
 			foreach ($fields as $k=>$v){
 				if (is_int($k)) {
 					$buf .= ",$v";
 				}
 				else {
-					
 					if(!is_scalar($v) && $v!==null){
-						$_onDup_=$v;
-						switch($_onDup_->mathMethod){
+						$_ignore_=$v;
+						switch($_ignore_->mathMethod){
 							case '+':
 							case '-':
 							case '*':
 							case '/':
-								$tmp = ",$k=$k".$_onDup_->mathMethod.$this->_safe($k,$_onDup_->val);
+								$tmp = ",$k=$k".$_ignore_->mathMethod.$this->_safe($k,$_ignore_->val);
 								break;
 							default:
-								throw new \ErrorException('unsupport sooh_dbField::method '.$_onDup_->mathMethod);
+								throw new \ErrorException('unsupport sooh_dbField::method '.$_ignore_->mathMethod);
 						}
 						
 						$buf .= $tmp;
-						if(in_array($k, $fieldsOnDup))
-							$fieldForOnDup .= $tmp;
 					}else{
 						$tmp = ",$k=".$this->_safe($k,$v);
 						$buf .= $tmp;
-						if(is_array($fieldsOnDup) && in_array($k, $fieldsOnDup))
-							$fieldForOnDup .= $tmp;
 					}
 				}
 			}
 			$buf=substr($buf,1);
-			if($fieldForOnDup!=='')
-				$this->fieldForOnDup = substr($fieldForOnDup,1);
+
 		}else $buf=$fields;
 		return $buf;
 	}
-	public function ensureRecord($obj, $fields, $fieldupdIfExist, $where=null,$fieldAuto=null)
+	
+	public function ensureRecord($obj, $fields, $fieldupdIfExist, $where=null, $fieldAuto=null)
 	{
-		if (is_string($fieldupdIfExist)) 
-			$fieldupdIfExist = explode(",",$fieldupdIfExist);
-		$obj = $this->_fmtObj($obj);
-		$sql = "insert into $obj->fullname set "
-				.$this->_fmtField($fields,$fieldupdIfExist)
-				.' ON DUPLICATE KEY UPDATE ';
-		$sql .= $this->fieldForOnDup;
-		
-		$fieldAuto = $this->_query($sql);
-		$fieldAuto = mysqli_insert_id($this->_connection);
-		if ($fieldAuto ==0) return true;
-		else return $fieldAuto;
+		$this->_fmtField($fields,$fieldupdIfExist);
+		$upded = $this->updRecords($obj, $this->fieldForOnDup, $where);
+		if(is_int($upded) && $upded>0)return true;
+		else{
+			return $this->addRecord($obj, $fields,true,$fieldAuto);
+		}
 	}
-
 	public function delRecords($obj,$where=null)
 	{
 		$obj = $this->_fmtObj($obj);
@@ -458,37 +449,37 @@ class Mysql implements \Sooh\DB\Interfaces\All
 		$this->_lastCmd->tablenamefull = $obj->fullname;
 		$this->_lastCmd->where = $this->_fmtWhere($where);
 		
-		$this->_query(null);
-		return mysqli_affected_rows($this->_connection);
+		$rset = $this->_query(null);
+		return sqlsrv_rows_affected($rset);
 	}
 	protected function _chkErr($skip=0)
 	{
-		$errno = mysqli_errno($this->_connection);
+		$message = sqlsrv_errors();
 
-		if ($errno) {
-			$message = mysqli_error($this->_connection);
-
-			switch ($errno){
-				case 1054:$err=sooh_dbErr::fieldNotExists;break;
-				case 1045:$err=sooh_dbErr::connectError;break;
-				case 1049:$err=sooh_dbErr::connectError;break;
+		if (is_array($message) && 5701!=$message[0]['code']) {
+			switch ($message[0]['code']){
+				//case :$err=sooh_dbErr::connectError;break;
+				case 18456:$err=sooh_dbErr::connectError;break;
 					
-				case 1050:$err=sooh_dbErr::tableExists;break;
-				case 1146:$err=sooh_dbErr::tableNotExists;break;
-				case 1060:$err=sooh_dbErr::fieldExists;break;
-				case 1062:
-				case 1022:
-				case 1069:
-					//[1062]Duplicate entry '2' for key 'PRIMARY''
-					$dupKey = explode('for key ', $message);
-					$dupKey = trim(array_pop($dupKey),'\'');
+				case 2714:$err=sooh_dbErr::tableExists;break;
+				case 208:$err=sooh_dbErr::tableNotExists;break;
+				case 2705:$err=sooh_dbErr::fieldExists;break;
+				case 207:$err=sooh_dbErr::fieldNotExists;break;
+				case 2627://ODBC Driver 11 for SQL Server][SQL Server]Violation of PRIMARY KEY constraint 'PK__test1231__3BD0198EF085A699'. Cannot insert duplicate key in object 'dbo.test12314'. The duplicate key value is (7).done
+					//Violation of UNIQUE KEY constraint 'b'. Cannot insert duplicate key in object 'dbo.test12314'. The duplicate key
+					$dupKey = explode(' KEY constraint \'', $message[0]['message']);
+					if(substr($dupKey[0],-7)=='PRIMARY')$dupKey='PRIMARY_KEY';
+					else{
+						$dupKey = explode('\'. Cannot insert',$dupKey[1]);
+						$dupKey = array_shift($dupKey);
+					}
 					$err=sooh_dbErr::duplicateKey;
 					break;
-				default:$err=sooh_dbErr::otherError; break;
+				default:$err=sooh_dbErr::otherError; $message[0]['message']="(err:".$message[0]['code'].")".$message[0]['message'];break;
 			}
 			if(0==($skip & $err)){
-				$lastCmd = sooh_broker::lastCmd();
-				$err=new sooh_dbErr($err,'['.$errno.']'.$message, $lastCmd);
+				$lastCmd =sooh_broker::lastCmd();
+				$err=new sooh_dbErr($err, $message[0]['message'], $lastCmd);
 				if(!empty($dupKey))$err->keyDuplicated=$dupKey;
 				error_log("[".$err->getCode()."]".$err->getMessage()."\n". $lastCmd."\n".$err->getTraceAsString());
 				throw $err;
@@ -539,38 +530,12 @@ class Mysql implements \Sooh\DB\Interfaces\All
 	{
 		if($sql == null){
 			if(empty($this->_lastCmd))throw new \ErrorException('empty sql given');
-			$this->_lastCmd->dowhat = strtolower($this->_lastCmd->dowhat);
-			switch($this->_lastCmd->dowhat){
-				case 'insert':
-					$sql='insert into '.$this->_lastCmd->tablenamefull.' set '.$this->_fmtField ($this->_lastCmd->field);
-					break;
-				case 'addlog':
-					$sql='insert delayed into '.$this->_lastCmd->tablenamefull.' set '.$this->_fmtField ($this->_lastCmd->field);
-					break;
-				case 'insert':
-					$sql='insert into '.$this->_lastCmd->tablenamefull.' set '.$this->_fmtField ($this->_lastCmd->field);
-					break;
-				case 'update':
-					$sql = 'update '.$this->_lastCmd->tablenamefull.' set '. $this->_fmtField ($this->_lastCmd->field);
-					break;
-				case 'delete':
-					$sql = 'delete from '.$this->_lastCmd->tablenamefull;
-					break;
-				case 'select':
-					$sql = 'select '. $this->_fmtField ($this->_lastCmd->field).' from '.$this->_lastCmd->tablenamefull;
-					break;
-				default:
-					throw new \ErrorException("unsupport sql cmd:".$this->_lastCmd->dowhat);
-			}
-			
-			
-			if(!empty($this->_lastCmd->where))$sql.= ' '.$this->_lastCmd->where;
-
+			$orderby=array();
+			$groupby=array();
 			if(!empty($this->_lastCmd->orderby)){
 				$arr = explode(' ',trim($this->_lastCmd->orderby));
 				$mx = count($arr);
-				$orderby=array();
-				$groupby=array();
+				
 				for($i=0;$i<$mx;$i+=2){
 					$k = $arr[$i];
 					$v = $arr[$i+1];
@@ -591,14 +556,74 @@ class Mysql implements \Sooh\DB\Interfaces\All
 							throw $err;
 					}
 				}
+			}
+			
+			$this->_lastCmd->dowhat=strtolower($this->_lastCmd->dowhat);
+			switch ($this->_lastCmd->dowhat){
+				case 'select':
+					$sql = 'select ';
+					if(is_array($this->_lastCmd->fromAndSize) && $this->_lastCmd->fromAndSize[1]>0){
+						$sql.=' top '.$this->_lastCmd->fromAndSize[1].' ';
+						if($this->_lastCmd->fromAndSize[0]!=0){
+							if(is_array($this->_lastCmd->pkey) && sizeof($this->_lastCmd->pkey)>1){
+								throw new \ErrorException("multi-pkey not support in mssql for limit");
+							}
+							if(is_array($this->_lastCmd->pkey)){
+								$pkey = key($this->_lastCmd->pkey);
+								if(is_int($pkey))$pkey=  current ($this->_lastCmd->pkey);
+							}else{
+								if(empty($this->_lastCmd->pkey))$pkey = 'Id';
+								else{
+									if(is_string($this->_lastCmd->pkey))$pkey=$this->_lastCmd->pkey;
+									else throw new \ErrorException("invalid pkey  in mssql found for limit");
+								}
+							}
+							$limit = "$pkey NOT IN (SELECT TOP {$this->_lastCmd->fromAndSize[0]} $pkey FROM {$this->_lastCmd->tablenamefull} __WHERE__";
+							if(!empty($orderby))$limit.=' order by '.implode (',', $orderby);
+							$limit.=")";
+							//throw new \ErrorException('todo: 获取并缓存主键');//SELECT TOP 10 * FROM sql WHERE ( code NOT IN (SELECT TOP 20 code FROM TestTable ORDER BY id))
+						}
+					}
+					$sql .=  $this->_fmtField($this->_lastCmd->field).' from '.$this->_lastCmd->tablenamefull;
+					break;
+				case 'addlog':
+				case 'insert':
+					$sql ='insert into '.$this->_lastCmd->tablenamefull ;
+					$sql.=" (".implode(',', array_keys($this->_lastCmd->field)).") ";
+					$sql.="values (";
+					foreach($this->_lastCmd->field as $k=>$v){
+						$sql.=$this->_safe($k,$v).',';
+					}
+					$sql = substr($sql,0,-1).")";
+					break;
+				case 'update':
+					//update FE_temp.dbo.tb_user set tb_user.timeLastBought = tb_bought.lastBought  
+					////	from FE_temp.dbo.tb_user left join FE_temp.dbo.tb_bought on tb_bought.userIdentifier=tb_user.userIdentifier 
+					$sql='update '.$this->_lastCmd->tablenamefull .' set '.$this->_fmtField ($this->_lastCmd->field);
+					break;
+				case 'delete':
+					$sql='delete from '.$this->_lastCmd->tablenamefull;
+					break;
+				default:
+					throw new \ErrorException('unsupport sql cmd:'.$this->_lastCmd->dowhat);
+			}
+			
+			if(!empty($limit)){
+				if(!empty($this->_lastCmd->where))	{
+					$where = substr(trim($this->_lastCmd->where),5);
+					$limit = str_replace('__WHERE__', ' where '.$where, $limit);
+					$sql.= ' where ('.$where.') and ('.$limit.')';
+				}else $sql.= ' where '.$limit = str_replace('__WHERE__', '', $limit);
+			}elseif(!empty($this->_lastCmd->where))	$sql.= ' '.$this->_lastCmd->where;
+			
+			
+			if(!empty($this->_lastCmd->orderby)){
 				if(!empty($groupby))$sort_group.=' group by '.implode (',', $groupby);
 				if(!empty($orderby))$sort_group.=' order by '.implode (',', $orderby);
 				$sql.= ' '.$sort_group;
 			}
 			
-			if($this->_lastCmd->dowhat=='select' && is_array($this->_lastCmd->fromAndSize) && $this->_lastCmd->fromAndSize[1]>0){
-				$sql.=' limit '.$this->_lastCmd->fromAndSize[0].','.$this->_lastCmd->fromAndSize[1];
-			}
+			
 			
 			$this->_lastCmd->resetForNext();
 			$this->_lastCmd->strTrace='['.$this->_lastCmd->server.']'.$sql;
@@ -618,8 +643,7 @@ class Mysql implements \Sooh\DB\Interfaces\All
 		$skip = sooh_dbErr::$maskSkipTheseError;
 		sooh_dbErr::$maskSkipTheseError=0;
 		
-		$rs = mysqli_query($this->_connection, $sql);
-		
+		$rs = sqlsrv_query($this->_connection,$sql);
 		$this->_chkErr($skip);
 		return $rs;
 	}
@@ -667,12 +691,20 @@ class Mysql implements \Sooh\DB\Interfaces\All
 	}
 	protected $wheresCreated=array(1,);
 	protected $h=null;
-	
+
 	public function _safe($fieldname,$str)
 	{
 		if(empty($fieldname))throw new \ErrorException('fieldname not given for safe string');
 		if(empty($this->_connection) || is_array($this->_connection)) throw new \ErrorException('connection-handle invalid');
-		return '\''.mysqli_real_escape_string($this->_connection,$str).'\'';
+		if(is_null($str))return 'NULL';
+		if(is_bool($str))return $str ? 1 : 0;
+		if(is_int($str))return (int)$str;
+		if(is_float($str))return (float)$str;
+
+		//if(@get_magic_quotes_gpc())$str = stripslashes($str);
+		$str = str_replace("'","''",$str);
+		$str = str_replace("\0","[NULL]",$str);
+		return "'$str'";
 	}
 	public function getRecordCount ($obj, $where=null, $orderby=null)
 	{
@@ -690,7 +722,7 @@ class Mysql implements \Sooh\DB\Interfaces\All
 		if(is_array($this->_connection))$this->connect();
 		if($dbTo==null)return $this->_lastDB;
 		if($this->_lastDB!=$dbTo){
-			mysqli_select_db($this->_connection, $this->_realDBName($dbTo));
+			//sqlsrv_select_db($this->_connection, $this->_realDBName($dbTo));
 			$this->_chkErr();
 			$this->_lastDB=$dbTo;
 		}
@@ -701,37 +733,47 @@ class Mysql implements \Sooh\DB\Interfaces\All
 	public function getTables($dbname,$like=null,$addDBNameWhenReturn=false)
 	{
 		if(is_array($this->_connection))$this->connect();
-		$rs = $this->_query("SHOW TABLES ". ($dbname?" FROM ".$this->_realDBName($dbname):'').($like!=null?" like '$like'":''));
+		//SELECT TABLE_NAME FROM information_schema.tables where TABLE_TYPE = 'BASE TABLE' ;
+		
+		$this->_lastCmd->dowhat='select';
+		$this->_lastCmd->field='TABLE_NAME';
+		$this->_lastCmd->tablenamefull = 'information_schema.tables';
+		if(is_string($like))$this->_lastCmd->where = $this->_fmtWhere(array('TABLE_TYPE'=>'BASE TABLE','TABLE_NAME*'=>"%$like%"));
+		else $this->_lastCmd->where = $this->_fmtWhere(array('TABLE_TYPE'=>'BASE TABLE'));
+		
+		$rs = $this->query(null);
 		$tables = array();
-		if($addDBNameWhenReturn)while (null!=($row = mysqli_fetch_row($rs))) $tables[] = $dbname.'.'.$row[0];
-		else while (null!=($row = mysqli_fetch_row($rs))) $tables[] = $row[0];
-		mysql_free_result($rs);
+		if($addDBNameWhenReturn)while (null!=($row = sqlsrv_fetch_array($rs,SQLSRV_FETCH_NUMERIC))) $tables[] = $dbname.'.'.$row[0];
+		else while (null!=($row = sqlsrv_fetch_array($rs,SQLSRV_FETCH_NUMERIC))) $tables[] = $row[0];
+		mysql_free_stmt($rs);
 		return $tables;
 	}
 	public function setFieldDef ($obj, $old, $new, $def=null, $after=null)
 	{
-		$obj = $this->_fmtObj($obj);
-		sooh_dbErr::$maskSkipTheseError = sooh_dbErr::fieldNotExists | sooh_dbErr::fieldExists;
-		$after = empty($after)?'':' after '.$after;
-		if($new==null)$this->_query('alter table '.$obj->fullname.' drop '.$old);
-		elseif ($old==null)$this->_query('alter table '.$obj->fullname.' add '.$new.' '.$def.$after);
-		else $this->_query('alter table '.$obj->fullname.' change '.$old.' '.$new.' '.$def.$after);
+		throw new \ErrorException("todo:not support yet");
+//		$obj = $this->_fmtObj($obj);
+//		sooh_dbErr::$maskSkipTheseError = sooh_dbErr::fieldNotExists | sooh_dbErr::fieldExists;
+//		$after = empty($after)?'':' after '.$after;
+//		if($new==null)$this->_query('alter table '.$obj->fullname.' drop '.$old);
+//		elseif ($old==null)$this->_query('alter table '.$obj->fullname.' add '.$new.' '.$def.$after);
+//		else $this->_query('alter table '.$obj->fullname.' change '.$old.' '.$new.' '.$def.$after);
 	}
 	public function dropTable ($obj)
 	{
 		$obj = $this->_fmtObj($obj);
-		$this->_query('drop table if exists '.$obj);
+		$sql = "IF EXISTS(SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '$obj->name') DROP TABLE $obj->name;";
+		$this->_query($sql);
 	}
 	public function ensureDB ($dbname)
 	{
-		$this->_query('create database if not exists '.$this->_realDBName($dbname).' CHARACTER SET utf8');
+		$sql = "if not exists（select * from sys.databases where name = '$dbname'）create database $dbname ";
+		$this->_query($sql);
 	}
 	/**
 	 * @param sooh_dbField $_ignore_ 
 	 */
 	public function ensureObj($obj,$fields,$pkey=null,$keys=null,$ukeys=null,$_ignore_=null)
 	{
-		$type = 'MyISAM';
 		if (empty($fields)) throw new \ErrorException('empty fields given');
 		$obj = $this->_fmtObj($obj);
 		$parts=array();
@@ -741,31 +783,30 @@ class Mysql implements \Sooh\DB\Interfaces\All
 			}else{
 				switch($_ignore_->fieldType){
 					case sooh_dbField::int32:
-						$sql .= $k.' int not null default '.($_ignore_->val-0).',';
+						$parts[]= $k.' int not null default '.($_ignore_->val-0);
 						break;
 					case sooh_dbField::int64:
-						$sql .= $k.' bigint unsigned not null default '.($_ignore_->val?:0).',';
+						$parts[]= $k.' bigint unsigned not null default '.($_ignore_->val?:0);
 						break;
 					case sooh_dbField::string:
-						if($_ignore_->fieldLen>16777215) $sql .= $k.' LONGTEXT,';
-						elseif($_ignore_->fieldLen>65535) $sql .= $k.' MEDIUMTEXT,';
-						elseif($_ignore_->fieldLen>1000)	$sql .= $k.' text,';
-						else $sql .= $k.' varchar($def->fieldLen) not null default \''.($_ignore_->val?:'').'\',';
+						if($_ignore_->fieldLen>2000)	$parts[] = $k.' text';
+						else $parts[] = $k.' varchar($def->fieldLen) not null default \''.($_ignore_->val?:'').'\'';
 						break;
 					case sooh_dbField::float:
-						$sql .= $k.' FLOAT not null default '.($_ignore_->val?:0).',';
+						$parts[]= $k.' FLOAT not null default '.($_ignore_->val?:0);
 						break;
 					case sooh_dbField::blob:
-						if($_ignore_->fieldLen>16777215) $sql .= $k.' LONGBLOB,';
-						elseif($_ignore_->fieldLen>65535) $sql .= $k.' MEDIUMBLOB,';
-						elseif($_ignore_->fieldLen>255)	$sql .= $k.' blob,';
-						else $sql .= $k.' tinyblob,';
+						$parts[]= $k.' blob';
 						break;
 				}
 			}
 		}
+		$tmpSysTb = explode('.', $obj->fullname);
+		$findName = array_pop($tmpSysTb);
+		$tmpSysTb[]='sysobjects';
 		
-		$sql = "create table if not exists {$obj->fullname} (" . implode(',', $parts) ;
+		$sql = "if not exists (select * from ".  implode('.', $tmpSysTb)." where id = object_id('$findName') and OBJECTPROPERTY(id, 'IsUserTable') = 1)"
+					."create table {$obj->fullname} (" .implode(',', $parts);
 		if (!empty($pkey)) {
 			if (is_array($pkey))$sql .= ", PRIMARY KEY  (".implode(",",$pkey).")";
 			else $sql .= ", PRIMARY KEY  ($pkey)";
@@ -786,9 +827,8 @@ class Mysql implements \Sooh\DB\Interfaces\All
 				$sql .= ",UNIQUE KEY $k ($key)";
 			}
 		}
-		$sql .=  ") ENGINE=". $type.' DEFAULT CHARSET=UTF8';
+		$sql .=  ")";
 		$this->execCustom(array('sql'=>$sql));
-		
 		return $this;
 	}
 }

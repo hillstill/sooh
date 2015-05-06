@@ -113,4 +113,28 @@ class Broker {
 	{
 		return isset(self::$lastSQLs[0])?self::$lastSQLs[0]:null;
 	}
+	/**
+	 * 标记忽略特定的数据库错误
+	 * @param string $err default is duplicateKey
+	 * @param bool $totalSkip true:no log no Exception, false: Exception only
+	 */
+	public static function errorMarkSkip($err= \Sooh\DB\Error::duplicateKey,$totalSkip=false)
+	{
+		if(!is_array(\Sooh\DB\Error::$maskSkipTheseError)){
+			\Sooh\DB\Error::$maskSkipTheseError = array($err=>$totalSkip);
+		}else{
+			\Sooh\DB\Error::$maskSkipTheseError[$err]=$totalSkip;
+		}
+	}
+	/**
+	 * 检查是否是指定的数据库错误类型
+	 * @param \ErrorException $e
+	 * @param string $type default is duplicateKey
+	 * @return boolean 
+	 */
+	public static function errorIs( $e, $type=\Sooh\DB\Error::duplicateKey)
+	{
+		$n = $e->getCode()-0;
+		return is_a($e,'\Sooh\DB\Base\Error') && (($n&$type)>0);
+	}
 }
