@@ -41,9 +41,10 @@ class Base {
 	 * @param type $request
 	 * @param \Sooh\DB\Form\Definition $_ignore_
 	 */
-	public function fillValues($request,$_ignore_=null)
+	public function fillValues($request,$reqMethod='getParam',$_ignore_=null)
 	{
-		
+		error_log("TODO: form->fillValues(array)");
+		/**
 		$this->values['__formguid__']=isset($request['__formguid__'])?$request['__formguid__']:null;
 		foreach($this->items as $k=>$_ignore_){
 			$v = isset($request[$k])?$request[$k]:null;
@@ -56,7 +57,28 @@ class Base {
 		}
 		
 		$this->flgIsThisForm = $this->values['__formguid__']==$this->guid;
-
+		 */
+		if($reqMethod=='get'){
+			$this->values['__formguid__']=$request->get('__formguid__');
+			foreach($this->items as $k=>$_ignore_){
+				$v = $request->get($k);
+				if($v!==null){
+					if(is_scalar($_ignore_) || $_ignore_===null)$this->values[$k]=$_ignore_;
+					else $this->values[$k]=$_ignore_->value=$v;
+				}
+			}
+			$this->flgIsThisForm = $this->values['__formguid__']==$this->guid;
+		}elseif($reqMethod=='getParam'){
+			$this->values['__formguid__']=$request->getParam('__formguid__');
+			foreach($this->items as $k=>$_ignore_){
+				$v = $request->getParam($k);
+				if($v!==null){
+					if(is_scalar($_ignore_) || $_ignore_===null)$this->values[$k]=$_ignore_;
+					else $this->values[$k]=$_ignore_->value=$v;
+				}
+			}
+			$this->flgIsThisForm = $this->values['__formguid__']==$this->guid;
+		}else throw new \ErrorException('unsupport requestMethod');
 		return $this->values;
 	}
 	public $flgIsThisForm=false;

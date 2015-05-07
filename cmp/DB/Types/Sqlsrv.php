@@ -488,7 +488,7 @@ class Sqlsrv implements \Sooh\DB\Interfaces\All
 				$err=new sooh_dbErr($err, $message[0]['message'], $lastCmd);
 				if(!empty($dupKey))$err->keyDuplicated=$dupKey;
 				throw $err;
-			}
+			}			
 		}
 	}
 /*
