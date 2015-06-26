@@ -43,6 +43,17 @@ class Task {
 	 */
 	public $ret;
 	public $subdir='';
+	protected $_isFirstRun=true;
+	/**
+	 * run的時候判定是否第一次被調用
+	 * @return type
+	 */
+	protected function isFirstRun()
+	{
+		$cur = $this->_isFirstRun;
+		$this->_isFirstRun=false;
+		return $cur;
+	}
 	/**
 	 * 
 	 * @param boolean $isManual 是否是手动调用的
@@ -78,7 +89,13 @@ class Task {
 	{
 //		error_log("\tCrond ".  getmypid()."#\tstartAfter:".($dt->his%10000) .'>='.$this->_iissStartAfter."  lastRun:".date("md H:i:s")
 //				." dur:".$this->_secondsRunAgain.' pass='.($dt->timestamp() - $this->_lastRun) . " hour:".$dt->hour." vs ".date('H',$this->_secondsRunAgain+$this->_lastRun));
-		if($dt->his%10000 >=$this->_iissStartAfter){
+		if($this->_isManual){
+			$ret = $this->onRun($dt);
+			if($dt->hour != date('H',$this->_secondsRunAgain+$this->_lastRun))$this->toBeContinue=false;
+			if(!is_bool($ret)){
+				throw new \ErrorException("return of CrondTask->onRun should be boolean,".  var_export($ret,true)." given");
+			}else return $ret;
+		}elseif($dt->his%10000 >=$this->_iissStartAfter){
 			$_tmp = $dt->timestamp();
 			
 			if($this->_lastRun==0 || $_tmp - $this->_lastRun>=$this->_secondsRunAgain){
