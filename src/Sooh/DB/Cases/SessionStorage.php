@@ -91,7 +91,7 @@ class SessionStorage extends \Sooh\DB\Base\KVObj
 		}
 		if(empty($this->pkey))return false;
 		if(self::$flgNeedSave==true){
-			if($this->md5 != md5($VArray) || self::$dtNow>$this->getField('iLastDt', true)+60) {
+			if($this->md5 !==md5($VArray) || self::$dtNow>$this->getField('iLastDt', true)+60) {
 				$this->setSessionFields($VArray);
 				$this->setField('sIP', $_SERVER['REMOTE_ADDR']);
 				if(!$this->getField('iLogin',true))	$this->setField('iLogin', self::$dtNow);
