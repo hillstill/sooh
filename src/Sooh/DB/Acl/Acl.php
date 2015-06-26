@@ -13,7 +13,7 @@ class Acl {
 	public static function getInstance()
 	{
 		if(self::$_instance===null){
-			error_log("defined(SOOH_ACL_CLASS)=".SOOH_ACL_CLASS);
+			//error_log("defined(SOOH_ACL_CLASS)=".SOOH_ACL_CLASS);
 			if(defined('SOOH_ACL_CLASS')){
 				$classname = SOOH_ACL_CLASS;
 				self::$_instance = new	$classname;

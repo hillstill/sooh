@@ -8,19 +8,6 @@ namespace Sooh\DB\Acl;
 class AclSession {
 	const field_loginid='SOOH_loginId';
 	/**
-	 * @return \Sooh\DB\AclSys
-	 */
-	public function getInstance()
-	{
-		if(defined('SOOH_ACL_CLASS')){
-			$classname = SOOH_ACL_CLASS;
-			$sys = new	$classname;
-		}else{
-			$sys = new \Sooh\DB\AclSys();
-		}
-		return sys;
-	}
-	/**
 	 * 枚举菜单列表
 	 * @return array array('manage.managers'=>'系统管理.管理员管理',)
 	 */
