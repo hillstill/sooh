@@ -6,7 +6,7 @@ namespace Sooh\DB\Base;
 class Where 
 	implements \Sooh\DB\Interfaces\Where
 {
-	public function append($k,$v=null,$ifRealAppend='markEmptyArray')
+	public function append($k,$v=null,$ifRealAppend='throwError')
 	{
 		if($this->dbClass==null)throw new \ErrorException('thisWhere ended already');
 		if($ifRealAppend===false)return $this;
