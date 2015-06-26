@@ -42,7 +42,7 @@ class Ctrl {
 	public function initNamespace($baseNamespace='',$useSubdir=false)
 	{
 		if(!empty($baseNamespace)){
-			if(substr($baseNamespace,-1)!='\\')$this->_baseNamespace=$baseNamespace.'\\';
+			if(substr($baseNamespace,-1)!=='\\')$this->_baseNamespace=$baseNamespace.'\\';
 			else $this->_baseNamespace=$baseNamespace;
 		}
 		$this->_useSubdirAsNamespace=$useSubdir;
@@ -61,6 +61,16 @@ class Ctrl {
 		clearstatcache();
 		$this->_isManual=true;
 		$dt = \Sooh\Base\Time::getInstance();
+		if($ymdh!==null){
+			if($ymdh>99991231){//yyyymmddhh
+				$dt->mktime($ymdh%100, 0, 0, floor($ymdh/100));
+			}elseif($ymdh<19000101){
+				throw new \ErrorException('ymdh specified error:'.$ymdh);
+			}else{//yyyymmdd
+				$dt->mktime(0, 0, 0, $ymdh);
+			}
+		}
+		
 
 		if(empty($task)){
 			throw new \ErrorException('you need specify a task');
@@ -72,26 +82,18 @@ class Ctrl {
 			}
 		}else{
 			$dir=explode('.',$task);
-			if(sizeof($dir)!=2)throw new \ErrorException('task specified error:'.$task);
+			if(sizeof($dir)!==2)throw new \ErrorException('task specified error:'.$task);
 			$this->newTask($dir[0],$dir[1],$this->_baseDir.'/'.  implode('/', $dir).'.php');
-		}
-		if($ymdh!==null){
-			if($ymdh>99991231){//yyyymmddhh
-				$dt->mktime($ymdh%100, 0, 0, floor($ymdh/100));
-			}elseif($ymdh<19000101){
-				throw new \ErrorException('ymdh specified error:'.$ymdh);
-			}else{//yyyymmdd
-				$dt->mktime(0, 0, 0, $ymdh);
-			}
 		}
 		$this->loop($dt);
 
-		$this->_log->writeCrondLog(null, __FUNCTION__." done");
+		//$this->_log->writeCrondLog(null, __FUNCTION__." done");
 	}
 	public function runCrond($task=null, $ymdh=null)
 	{
-		$this->_log->writeCrondLog(null, __FUNCTION__."($task=null, crond)");
+		//$this->_log->writeCrondLog(null, __FUNCTION__."($task=null, crond)");
 		clearstatcache();
+		$ini = \Sooh\Base\Ini::getInstance();
 		$this->_isManual=false;
 		$dt = \Sooh\Base\Time::getInstance();
 		if($dt->hour==3){
@@ -148,7 +150,7 @@ class Ctrl {
 					}
 					$ret = $this->loop($dt);
 					if($i>50&&$ret==false)break;
-					$dt->sleepTo($dt->hour, $dt->minute+1);
+					$dt->sleepTo($dt->hour, $dt->minute+1,$ini->get('crondBatchSleepTo')-0);
 				}
 			}
 		}else{
@@ -157,7 +159,7 @@ class Ctrl {
 			for($i=0;$i<60;$i++){
 				if($this->loop($dt)){
 					//$this->_log->writeCrondLog(null, __FUNCTION__." run single,needs sleep to ".$dt->hour.":".($dt->minute+1));
-					$dt->sleepTo($dt->hour, $dt->minute+1);
+					$dt->sleepTo($dt->hour, $dt->minute+1,$ini->get('crondBatchSleepTo')-0);
 				}else{
 					//$this->_log->writeCrondLog(null, __FUNCTION__." run single,end no more");
 					break;
@@ -165,7 +167,7 @@ class Ctrl {
 			}
 		}
 
-		$this->_log->writeCrondLog(null, __FUNCTION__." done");
+		//$this->_log->writeCrondLog(null, __FUNCTION__." done");
 	}
 	protected function forkTask($task)
 	{
@@ -190,7 +192,9 @@ class Ctrl {
 				}else{
 					$realclass = $this->_baseNamespace.$taskname;
 				}
-			}else $realclass = $taskname;
+			}else{
+				$realclass = $taskname;
+			}
 			
 			//$this->_log->writeCrondLog(null,__FUNCTION__."new $realclass() from $fullpatch");
 			$_ignore_ = new $realclass($this->_isManual);
@@ -255,7 +259,7 @@ class Ctrl {
 			if($exec==0){
 				
 				if($numBool==$total)return false;
-//				if(sizeof($done)!=$total)
+//				if(sizeof($done)!==$total)
 //					$this->_log->writeCrondLog(null, "task require mismatch exec:$exec done:".sizeof($done)." for:".implode(',', $waiting));
 				break;
 			}
@@ -269,7 +273,7 @@ class Ctrl {
 		$dh = opendir($this->_baseDir);
 		if(!$dh)die($this->_log->writeCrondLog(null, "read base dir failed:".$this->_baseDir));
 		while(false!==($subdir=  readdir($dh))){
-			if($subdir[0]!='.' && is_dir($this->_baseDir.'/'.$subdir)){
+			if($subdir[0]!=='.' && is_dir($this->_baseDir.'/'.$subdir)){
 				$subdirs[]=$subdir;
 			}
 		}

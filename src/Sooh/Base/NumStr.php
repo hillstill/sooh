@@ -82,7 +82,7 @@ class NumStr
 			$cmp = $this->vals['Ymd'];
 			$field = 'Ymd';
 		}
-		if($cmp!=$today){
+		if($cmp!==$today){
 			if(is_array($defaultOnDayChange)){
 				foreach($defaultOnDayChange as $k=>$v)
 					$this->vals[$k]=$v;

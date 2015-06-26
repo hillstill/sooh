@@ -34,9 +34,9 @@ class Log {
 	public function updCrondStatus($ymd,$hour,$taskid,$lastStatus,$isOkFinal,$isManual=0)
 	{
 		try{
-			if(strlen($lastStatus)>500){
+			if(strlen($lastStatus)>250){
 				error_log('updCrondStatus_msgTooLong:'.$lastStatus);
-				$lastStatus = substr($lastStatus,0,500)."...";
+				$lastStatus = substr($lastStatus,0,250)."...";
 			}
 			\Sooh\DB\Broker::errorMarkSkip();
 			\Sooh\DB\Broker::getInstance($this->dbConfID)->addRecord($this->tbName, array('ymdh'=>$ymd*100+$hour,'taskid'=>$taskid,'lastStatus'=>$lastStatus,'ymdhis'=>date('YmdHis'),'lastRet'=>$isOkFinal,'isManual'=>$isManual));
