@@ -10,6 +10,12 @@ class Field
 	const int64='int64';
 	const float='float';
 	const string='string';
+	const str36='str36';
+	const str64='str64';
+	const str128='str128';
+	const str256='str256';
+	const str1k='str1k';
+	const str2k='str2k';
 	const blob='blob';
 	
 	public $fieldType=null;
