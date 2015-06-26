@@ -29,7 +29,13 @@ class Mysql implements \Sooh\DB\Interfaces\All
 			$ret = $this->updRecords($obj, $fields,$arrPkey);
 			if(!$ret)throw new \ErrorException('update failed, pkey error?');
 		}else{
-			$fields[$k] = $v>=100000000?1:$v+1;
+			if($v>99999999){
+				$fields[$k]=substr($v,-8);
+			}elseif($v==99999999){
+				$fields[$k]=1;
+			}else{
+				$fields[$k]=$v+1;
+			}
 			$where[$k]=$v;
 			$ret = $this->updRecords($obj, $fields,$where);
 			if($ret!==1)throw new \ErrorException('update failed, verid changed?');
@@ -39,8 +45,7 @@ class Mysql implements \Sooh\DB\Interfaces\All
 	{
 		$auto = null;
 		foreach ($arrPkey as $k=>$v){
-			if($v===null)$auto=$k;
-			else $fields[$k]=$v;
+			$fields[$k]=$v;
 		}
 		if(is_array($verCurrent))foreach ($verCurrent as $k=>$v){
 			$fields[$k]=$v;
@@ -51,7 +56,7 @@ class Mysql implements \Sooh\DB\Interfaces\All
 	}
 	public function kvoDelete($obj,$arrPkey)
 	{
-		$this->delRecords($obj,$arrPkey);
+		return $this->delRecords($obj,$arrPkey);
 	}
 	public function getRank($obj,$whereForWho,$fieldScore,$rsort=true)
 	{
@@ -114,11 +119,21 @@ class Mysql implements \Sooh\DB\Interfaces\All
 	}
 	protected $objForCreateWhere=null; 
 	private $_lastDB;
+	private $_host_port=array();
+	public function host()
+	{
+		return $this->_host_port['host'];
+	}
+	public function port()
+	{
+		return $this->_host_port['port'];
+	}
 	protected function connect()
 	{
 		$conf= $this->_connection;
 		if(empty($conf))throw new \ErrorException('disconnection called already?');
 		$this->_lastCmd = new sooh_sql();
+		$this->_host_port = array('host'=>$conf['host'],'port'=>$conf['port']);
 		$this->_lastCmd->server = $conf['host'].':'.$conf['port'];
 		$defaultDB = $conf['name'];
 		unset($conf['dbEnums']);
@@ -168,12 +183,10 @@ class Mysql implements \Sooh\DB\Interfaces\All
 			$this->_query('SET AUTOCOMMIT = 1');
 		$this->flgTransaction=null;
 	}
-	public function addRecord($obj, $fields, $ignoreExists=false, $fieldAuto=null)
+	public function addRecord($obj, $fields, $fieldAuto=null)
 	{
 		$obj = $this->_fmtObj($obj);
 		$obj->autoInc = $fieldAuto;
-//TODO: $ignoreExists 可以不再使用了
-		if($ignoreExists)sooh_dbErr::$maskSkipTheseError = array(sooh_dbErr::duplicateKey=>true);
 		$this->_lastCmd->dowhat = "insert";
 		$this->_lastCmd->tablenamefull = $obj->fullname;
 		
@@ -416,7 +429,9 @@ class Mysql implements \Sooh\DB\Interfaces\All
 								$tmp = ",$k=$k".$_onDup_->mathMethod.$this->_safe($k,$_onDup_->val);
 								break;
 							default:
-								throw new \ErrorException('unsupport sooh_dbField::method '.$_onDup_->mathMethod);
+								$err= new \ErrorException('unsupport sooh_dbField::method '.var_export($v,true));
+								error_log($err->getMessage()."\n".$err->getTraceAsString());
+								throw $err;
 						}
 						
 						$buf .= $tmp;
@@ -631,7 +646,7 @@ class Mysql implements \Sooh\DB\Interfaces\All
 	}
 	private function _fmtWhere($where)
 	{
-		if($where!=null){
+		if(!empty($where)){
 			if(is_array($where)){
 				if(count($where)==1 && strtoupper(key($where))=='OR'){
 					$where = current($where);
@@ -707,7 +722,7 @@ class Mysql implements \Sooh\DB\Interfaces\All
 	public function getTables($dbname,$like=null,$addDBNameWhenReturn=false)
 	{
 		if(is_array($this->_connection))$this->connect();
-		$rs = $this->_query("SHOW TABLES ". ($dbname?" FROM ".$this->_realDBName($dbname):'').($like!=null?" like '$like'":''));
+		$rs = $this->_query("SHOW TABLES ". ($dbname?" FROM ".$this->_realDBName($dbname):'').($like!==null?" like '$like'":''));
 		$tables = array();
 		if($addDBNameWhenReturn)while (null!=($row = mysqli_fetch_row($rs))) $tables[] = $dbname.'.'.$row[0];
 		else while (null!=($row = mysqli_fetch_row($rs))) $tables[] = $row[0];

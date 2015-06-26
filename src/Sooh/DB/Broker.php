@@ -40,7 +40,7 @@ class Broker {
 				$conf = $ini->get('dbConf.'.$arrConf_or_Index);
 			}
 		}
-		if(!isset($conf['name']) || $modName!=null){
+		if(!isset($conf['name']) || $modName!==null){
 			if (isset($conf['dbEnums'][$modName]))$conf['name'] = $conf['dbEnums'][$modName];
 			else $conf['name'] = $conf['dbEnums']['default'];
 		}
@@ -48,7 +48,13 @@ class Broker {
 		if (empty(self::$_instances[$id])) {
 			$type = $conf['type'];
 			if(empty($type)){
-				$err=new \ErrorException('db-config missing:'.  json_encode($arrConf_or_Index));
+				$ttmp = $ini->get('dbConf');
+				if(is_array($ttmp)){
+					$ttmp = implode(',', array_keys($ttmp));
+				}else {
+					$ttmp='EMPTY';
+				}
+				$err=new \ErrorException('db-config missing:'.  json_encode($arrConf_or_Index) .' current:'.$ttmp);
 				error_log($err->getMessage()."\n".$err->getTraceAsString());
 				throw $err;
 			}
@@ -101,22 +107,31 @@ class Broker {
 	 * @var array 记录最近执行的sqlCmd的堆栈
 	 */
 	private static $lastSQLs=array();
+	public static $maxLastSqls=3;
 	/**
 	 * 
 	 * @param sooh_sql $cmd
 	 */
 	public static function pushCmd($cmd)
 	{
-		if(sizeof(self::$lastSQLs)>2)array_pop (self::$lastSQLs);
+		if(sizeof(self::$lastSQLs)>self::$maxLastSqls)array_pop (self::$lastSQLs);
 		array_unshift(self::$lastSQLs, $cmd->strTrace);
 	}
 	/**
 	 * 
 	 * @return string 
 	 */
-	public static function lastCmd()
+	public static function lastCmd($topOne=true)
 	{
-		return isset(self::$lastSQLs[0])?self::$lastSQLs[0]:null;
+		if($topOne){
+			if(self::$lastSQLs[0]){
+				return self::$lastSQLs[0];
+			}else{
+				return null;
+			}
+		}else{
+			return self::$lastSQLs;
+		}
 	}
 	/**
 	 * 标记忽略特定的数据库错误

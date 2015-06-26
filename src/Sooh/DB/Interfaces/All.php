@@ -25,8 +25,10 @@ interface All
 	/**
 	 * @return autoid if has
 	 */
-	public function addRecord($obj, $fields, $ignoreExists=false, $fieldAuto=null);
+	public function addRecord($obj, $fields, $fieldAuto=null);
 	public function addLog($obj, $fields);
+	public function host();
+	public function port();
 	/**
 	 * get or set current database
 	 * @return All
@@ -97,7 +99,7 @@ interface All
 	 * @param boolean $override if verid++
 	 */
 	public function kvoUpdate($obj,$fields,$arrPkey,$verCurrent,$override=false);
-	public function kvoNew($obj,$fields, $arrPkey,$verCurrent);
+	public function kvoNew($obj,$fields, $arrPkey,$verCurrent, $fieldAuto=null);
 	public function kvoDelete($obj,$arrPkey);
 			
 	/////////////////////////////////////////////////////////////////////////////////////////////extending

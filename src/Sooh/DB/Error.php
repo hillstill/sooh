@@ -3,7 +3,7 @@ namespace Sooh\DB;
 /**
  * @author Simon Wang <sooh_simon@163.com> 
  */
-class Error extends \ErrorException
+class Error extends \Sooh\Base\ErrException
 {
 	public $strLastCmd;
 	const connectError=1;//检查配置；检查应用服务和网络的状态
@@ -22,4 +22,13 @@ class Error extends \ErrorException
 	}
 	public $keyDuplicated=null;//冲突的键名
 	public static $maskSkipTheseError=0;	
+/*
+	public function error_log($msgPrefix='ErrorException:')
+	{
+		if($this->isWroteToErrorLog===false){
+			$this->isWroteToErrorLog=true;
+			error_log($msgPrefix.$this->getMessage()."\n".\Sooh\DB\Broker::lastCmd()."\n".$this->getTraceAsString());
+		}
+	}
+*/
 }

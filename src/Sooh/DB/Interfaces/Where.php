@@ -15,7 +15,7 @@ namespace Sooh\DB\Interfaces;
  * 
  * @param mixed $k
  * @param mixed $v
- * @param mixed $ifRealAppend bool or 'markEmptyArray'
+ * @param mixed $ifRealAppend bool or 'throwError'
  * @return tea_dbinterfaceWhere
  * @throws \ErrorException
  * @author Simon Wang <sooh_simon@163.com> 
@@ -32,7 +32,7 @@ interface Where
 	/**
 	 * @return Where
 	 */
-	public function append($k,$v=null,$flg='markEmptyArray');
+	public function append($k,$v=null,$flg='throwError');
 	public function end();
 	public function abandon();
 }

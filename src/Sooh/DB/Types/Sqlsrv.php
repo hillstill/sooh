@@ -30,7 +30,13 @@ class Sqlsrv implements \Sooh\DB\Interfaces\All
 			$ret = $this->updRecords($obj, $fields,$arrPkey);
 			if(!$ret)throw new \ErrorException('update failed, pkey error?');
 		}else{
-			$fields[$k] = $v>=100000000?1:$v+1;
+			if($v>99999999){
+				$fields[$k]=substr($v,-8);
+			}elseif($v==99999999){
+				$fields[$k]=1;
+			}else{
+				$fields[$k]=$v+1;
+			}
 			$where[$k]=$v;
 			$ret = $this->updRecords($obj, $fields,$where);
 			if($ret!==1)throw new \ErrorException('update failed, verid changed?');
@@ -40,8 +46,7 @@ class Sqlsrv implements \Sooh\DB\Interfaces\All
 	{
 		$auto = null;
 		foreach ($arrPkey as $k=>$v){
-			if($v===null)$auto=$k;
-			else $fields[$k]=$v;
+			$fields[$k]=$v;
 		}
 		if(is_array($verCurrent))foreach ($verCurrent as $k=>$v){
 			$fields[$k]=$v;
@@ -52,7 +57,7 @@ class Sqlsrv implements \Sooh\DB\Interfaces\All
 	}
 	public function kvoDelete($obj,$arrPkey)
 	{
-		$this->delRecords($obj,$arrPkey);
+		return $this->delRecords($obj,$arrPkey);
 	}
 	public function getRank($obj,$whereForWho,$fieldScore,$rsort=true)
 	{
@@ -122,11 +127,20 @@ class Sqlsrv implements \Sooh\DB\Interfaces\All
 	}
 		protected $objForCreateWhere=null; 
 	private $_lastDB;
+	public function host()
+	{
+		return $this->_host_port['host'];
+	}
+	public function port()
+	{
+		return $this->_host_port['port'];
+	}	
 	protected function connect()
 	{
 		$conf= $this->_connection;
 		if(empty($conf))throw new \ErrorException('disconnection called already?');
 		$this->_lastCmd = new sooh_sql();
+		$this->_host_port = array('host'=>$conf['host'],'port'=>$conf['port']);
 		$this->_lastCmd->server = $conf['host'];//.':'.$conf['port'];
 		$defaultDB = $conf['name'];
 		unset($conf['dbEnums']);
@@ -176,12 +190,11 @@ class Sqlsrv implements \Sooh\DB\Interfaces\All
 			$this->_query('SET AUTOCOMMIT = 1');
 		$this->flgTransaction=null;
 	}
-	public function addRecord($obj, $fields, $ignoreExists=false, $fieldAuto=null)
+	public function addRecord($obj, $fields,  $fieldAuto=null)
 	{
 		$obj = $this->_fmtObj($obj);
 		$obj->autoInc = $fieldAuto;
 		
-		if($ignoreExists)sooh_dbErr::$maskSkipTheseError = array(sooh_dbErr::duplicateKey=>true);
 		$this->_lastCmd->dowhat = "insert";
 		$this->_lastCmd->tablenamefull = $obj->fullname;
 		
@@ -365,7 +378,6 @@ class Sqlsrv implements \Sooh\DB\Interfaces\All
 		$this->_lastCmd->where = $this->_fmtWhere($where);
 		$this->_lastCmd->orderby = $orderby;
 		$this->_lastCmd->fromAndSize=array(0,1);
-		
 		$rs0 = $this->_query(null);
 		$r = sqlsrv_fetch_array($rs0,SQLSRV_FETCH_NUMERIC);
 		$this->_chkErr();
@@ -417,7 +429,9 @@ class Sqlsrv implements \Sooh\DB\Interfaces\All
 								$tmp = ",$k=$k".$_ignore_->mathMethod.$this->_safe($k,$_ignore_->val);
 								break;
 							default:
-								throw new \ErrorException('unsupport sooh_dbField::method '.$_ignore_->mathMethod);
+								$err= new \ErrorException('unsupport sooh_dbField::method '.var_export($v,true));
+								error_log($err->getMessage()."\n".$err->getTraceAsString());
+								throw $err;
 						}
 						
 						$buf .= $tmp;
@@ -488,7 +502,7 @@ class Sqlsrv implements \Sooh\DB\Interfaces\All
 				$err=new sooh_dbErr($err, $message[0]['message'], $lastCmd);
 				if(!empty($dupKey))$err->keyDuplicated=$dupKey;
 				throw $err;
-			}
+			}			
 		}
 	}
 /*
@@ -569,7 +583,7 @@ class Sqlsrv implements \Sooh\DB\Interfaces\All
 					$sql = 'select ';
 					if(is_array($this->_lastCmd->fromAndSize) && $this->_lastCmd->fromAndSize[1]>0){
 						$sql.=' top '.$this->_lastCmd->fromAndSize[1].' ';
-						if($this->_lastCmd->fromAndSize[0]!=0){
+						if($this->_lastCmd->fromAndSize[0]!==0){
 							if(is_array($this->_lastCmd->pkey) && sizeof($this->_lastCmd->pkey)>1){
 								throw new \ErrorException("multi-pkey not support in mssql for limit");
 							}
@@ -647,14 +661,14 @@ class Sqlsrv implements \Sooh\DB\Interfaces\All
 		
 		$skip = sooh_dbErr::$maskSkipTheseError;
 		sooh_dbErr::$maskSkipTheseError=array();
-		
+		//throw new \ErrorException($sql);
 		$rs = sqlsrv_query($this->_connection,$sql);
 		$this->_chkErr($skip);
 		return $rs;
 	}
 	private function _fmtWhere($where)
 	{
-		if($where!=null){
+		if(!empty($where)){
 			if(is_array($where)){
 				if(count($where)==1 && strtoupper(key($where))=='OR'){
 					$where = current($where);
@@ -726,7 +740,7 @@ class Sqlsrv implements \Sooh\DB\Interfaces\All
 	{
 		if(is_array($this->_connection))$this->connect();
 		if($dbTo==null)return $this->_lastDB;
-		if($this->_lastDB!=$dbTo){
+		if($this->_lastDB!==$dbTo){
 			//sqlsrv_select_db($this->_connection, $this->_realDBName($dbTo));
 			$this->_chkErr();
 			$this->_lastDB=$dbTo;
@@ -748,8 +762,8 @@ class Sqlsrv implements \Sooh\DB\Interfaces\All
 		
 		$rs = $this->query(null);
 		$tables = array();
-		if($addDBNameWhenReturn)while (null!=($row = sqlsrv_fetch_array($rs,SQLSRV_FETCH_NUMERIC))) $tables[] = $dbname.'.'.$row[0];
-		else while (null!=($row = sqlsrv_fetch_array($rs,SQLSRV_FETCH_NUMERIC))) $tables[] = $row[0];
+		if($addDBNameWhenReturn)while (null!==($row = sqlsrv_fetch_array($rs,SQLSRV_FETCH_NUMERIC))) $tables[] = $dbname.'.'.$row[0];
+		else while (null!==($row = sqlsrv_fetch_array($rs,SQLSRV_FETCH_NUMERIC))) $tables[] = $row[0];
 		mysql_free_stmt($rs);
 		return $tables;
 	}
