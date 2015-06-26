@@ -32,13 +32,13 @@ class Tools {
 	public static function remoteIP()
 	{
 		$proxyIP = \Sooh\Base\Ini::getInstance()->get('inner_nat');
-		if(!empty($proxyIP)){
+		if(!empty($proxyIP) && !empty($_SERVER['HTTP_X_FORWARDED_FOR'])){
 			return $_SERVER['HTTP_X_FORWARDED_FOR'];
 		}else{
 			return $_SERVER['REMOTE_ADDR'];
 		}
 	}
-	public static function httpGet($url,$arrHeaders=null)
+	public static function httpGet($url,$arrHeaders=null,$arrCookies=null)
 	{
 		$ch = curl_init();
 		if($ch){
@@ -46,11 +46,59 @@ class Tools {
 			if(is_array($arrHeaders) && !empty($arrHeaders)){
 				curl_setopt($ch, CURLOPT_HTTPHEADER, $arrHeaders);
 			}
+			if(is_array($arrCookies) && !empty($arrCookies)){
+				$arrCookies = str_replace('&', '; ', http_build_query($arrCookies));
+				curl_setopt($ch, CURLOPT_COOKIE,$arrCookies);
+			}
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 			curl_setopt($ch, CURLOPT_HEADER, 0);
 			$output = curl_exec($ch);
 			$err=curl_error($ch);
+			if(!empty($err)){
+				error_log('[errorFailed]'.$url);
+			}
+			self::$httpCodeLast = curl_getinfo($ch,CURLINFO_HTTP_CODE);
 			curl_close($ch);
+			
+			return $output.$err;
+		}else{
+			return "curl init failed";
+		}
+	}
+	protected static $httpCodeLast=0; 
+	public static function httpCodeLast()
+	{
+		return self::$httpCodeLast;
+	}
+	public static function httpPost($url,$args,$arrHeaders=null,$arrCookies=null)
+	{
+		$ch = curl_init();
+		if($ch){
+			curl_setopt($ch, CURLOPT_URL, $url);
+			
+			if(is_array($arrHeaders) && !empty($arrHeaders)){
+				curl_setopt($ch, CURLOPT_HTTPHEADER, $arrHeaders);
+			}
+			if(is_array($arrCookies) && !empty($arrCookies)){
+				$arrCookies = str_replace('&', '; ', http_build_query($arrCookies));
+				curl_setopt($ch, CURLOPT_COOKIE,$arrCookies);
+			}
+			$tmp= http_build_query($args);
+			curl_setopt($ch, CURLOPT_POST, 1);
+			if(strlen($tmp)<1000){
+				curl_setopt($ch, CURLOPT_POSTFIELDS, $tmp);
+			}else{
+				curl_setopt($ch, CURLOPT_POSTFIELDS, $args);
+			}
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+			curl_setopt($ch, CURLOPT_HEADER, 0);
+			$output = curl_exec($ch);
+			$err=curl_error($ch);
+			self::$httpCodeLast = curl_getinfo($ch,CURLINFO_HTTP_CODE);
+			curl_close($ch);
+			
 			return $output.$err;
 		}else{
 			return "curl init failed";
