@@ -153,10 +153,8 @@ class Ini {
 	public static function registerShutdown($callback,$funcDesc)
 	{
 		if($callback===null){
-			error_log("try:shutdown:");
 			foreach(self::$funcShutdown as $funcDesc=>$func){
 				try{
-					error_log("try:$funcDesc:");
 					if(is_array($func) || is_string($func)){
 						call_user_func($func);
 					}else{
@@ -170,7 +168,6 @@ class Ini {
 				\Sooh\DB\Broker::free();
 			}
 		}else{
-			error_log("add shutdown:$funcDesc:");
 			self::$funcShutdown[$funcDesc]=$callback;
 		}
 	}
@@ -179,5 +176,21 @@ class Ini {
 	public function dump()
 	{
 		return $this->globals;
+	}
+}
+
+function var_log($var,$prefix=''){
+	if(is_a($var, "\Exception")){
+		$s = $var->getTraceAsString();
+		if(!empty($s)){
+			if(class_exists('\Sooh\DB\Broker',false)){
+				$sql = "\n".\Sooh\DB\Broker::lastCmd()."\n";
+			}else{
+				$sql = "\n";
+			}
+			error_log($prefix.$sql.$var->getMessage()."\n".$s);
+		}
+	}else{
+		error_log($prefix."\n".var_export($var,true));
 	}
 }
