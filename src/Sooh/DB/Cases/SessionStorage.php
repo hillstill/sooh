@@ -1,9 +1,6 @@
 <?php
-namespace Sooh\KVObj\Cases;
+namespace Sooh\DB\Cases;
 
-use \Sooh\Base\Trace as sooh_trace;
-use \Sooh\Base\Time as sooh_time;
-use \Sooh\DB\Broker as sooh_broker;
 /**
  * usage:
  *		conf.php
@@ -25,148 +22,139 @@ use \Sooh\DB\Broker as sooh_broker;
 class SessionStorage extends \Sooh\DB\Base\KVObj
 {
 	public static $flgNeedSave=true;
-	/**
 
-	 * @return SessionStorage
-	 */
-	public static function initInstance($secondTimeout=600,$funcLogout=null)
+//	public static function initInstance($secondTimeout=600,$funcLogout=null)
+//	{
+//		self::$timeout = $secondTimeout;
+//		self::$funcOnLogout = $funcLogout;
+//		self::$dtNow = sooh_time::getInstance()->timestamp();
+//		return parent::getCopy(array('sID'=>0));
+//	}
+	protected static function idFor_dbByObj_InConf($isCache)
 	{
-		self::$timeout = $secondTimeout;
-		self::$funcOnLogout = $funcLogout;
-		self::$dtNow = sooh_time::getInstance()->timestamp();
-		return parent::getCopy(array('sID'=>0));
+		return 'Session';
 	}
-
-	//without cache table, field _ver_id(int) defined in table as sequence lock
-	protected function initConstruct()
+	protected static $_instance=null;
+	protected static $_config=null;
+	/**
+	 * @return SessionStorage
+	 */	
+	public static function getInstance($sessionId,$arrConfig=null)
 	{
+		if(self::$_instance===null){
+			if(!empty($arrConfig)){
+				self::$_config = $arrConfig;
+			}
+			self::$_instance=self::getCopy(array('sessionId'=>$sessionId));
+			self::$_instance->load();
+		}
+		return self::$_instance;
+	}
+	public function getSessionData()
+	{
+		return $this->getField('sessionData',true);
+	}
+	public function setSessionData($strValue,$dtExpired)
+	{
+		$this->setField('sessionData', $strValue);
+		$this->setField('sessionExpired', $dtExpired);
+	}
+	public function tellMeUser($userid,$ip,$camefrom=null)
+	{
+		$this->setField('user', $userid);
+		$this->setField('ip', $ip);
+		$this->setField('camefrom', $camefrom);
+	}
+	public static function hookSessionHandle($arrConfig){
 		session_module_name('user');
 		session_set_save_handler(
-			array($this, 'sess_open'),
-			array($this, 'sess_close'),
-			array($this, 'sess_read'),
-			array($this, 'sess_write'),
-			array($this, 'sess_destroy'),
+			__CLASS__.'::sess_open',
+			__CLASS__.'::sess_close',
+			__CLASS__.'::sess_read',
+			__CLASS__.'::sess_write',
+			__CLASS__.'::sess_destroy',
 			array($this, 'sess_gc')
 		);
-		return parent::initConstruct(0,'iVerID');
+		self::$_config = $arrConfig;
 	}
+
 	protected static $timeout=0;
 	protected static $dtNow=0;
 	protected $md5=null;
 	
 	protected static function splitedTbName($n,$isCache)
 	{
-		return 'ram_session';
+		return self::$_config['tb'].($n%self::numToSplit());
 	}
-	protected function setSessionFields($str)
-	{
-		$this->setField('sVal', $str);
-		$this->setField('sUGRP', 'userGrp');
-		$this->setField('sUID', 'uid');
-	}
+//	protected function setSessionFields($str)
+//	{
+//		$this->setField('sVal', $str);
+//		$this->setField('sUGRP', 'userGrp');
+//		$this->setField('sUID', 'uid');
+//	}
 	
-	public function sess_open($save_path, $session_name){return true;}
-	public function sess_close() {return true;}
+	public static function sess_open($save_path, $session_name){return true;}
+	public static function sess_close() {return true;}
 	public function sess_read($SessionKey){
-		if(sooh_trace::needsWrite(__CLASS__))sooh_trace::str('try load session:'.$SessionKey);
-		$this->initPkey(array('sID'=>$SessionKey));
-		$this->sess_gc_one ();
-		//if(rand(1,1000)<10)$this->sess_gc_one ();
-		$exists = $this->load();
-		if($exists===null || $this->getField('iLastDt')+self::$timeout<self::$dtNow){
-			if(sooh_trace::needsWrite(__CLASS__))sooh_trace::str('missing or expire session:'.$SessionKey.':'. json_encode($this->r));
-			return false;
-		}else {
-			$s = $this->getField('sVal');
-			$this->md5 = md5($s);
-			if(sooh_trace::needsWrite(__CLASS__))sooh_trace::obj('find session:'.$SessionKey.':',$this->r);
-			return $s;
-		}
+		$tmp = self::getInstance($SessionKey);
+		return $tmp->getSessionData();
 	}
 	public function sess_write($SessionKey, $VArray) {
-		//if(class_exists('\Sooh\Base\Trace',false)){
-		if(class_exists(sooh_trace,false)){
-			if(sooh_trace::needsWrite(__CLASS__))sooh_trace::str('try save session:'.$SessionKey.' with Pkey='.  json_encode($this->pkey).' flgNeedSave='.  var_export(self::$flgNeedSave,true));
-		}
-		if(empty($this->pkey))return false;
-		if(self::$flgNeedSave==true){
-			if($this->md5 !==md5($VArray) || self::$dtNow>$this->getField('iLastDt', true)+60) {
-				$this->setSessionFields($VArray);
-				$this->setField('sIP', $_SERVER['REMOTE_ADDR']);
-				if(!$this->getField('iLogin',true))	$this->setField('iLogin', self::$dtNow);
-				$this->setField('iLastDt', self::$dtNow);
-				try{
-					$this->update();
-				}catch(\ErrorException $e){
-					sooh_trace::exception($e);
-					return false;
-				}
-			}
+		$tmp = self::getInstance($SessionKey);
+		$tmp->setSessionData($VArray, $dtExpired);
+		try{
+			$tmp->update();
+		}  catch (\ErrorException $e){
+			error_log('write session failed:'.$e->getMessage()."\n".$e->getTraceAsString());
 		}
 		return true;
 	}
-	function sess_destroy($SessionKey) {
-		if(sooh_trace::needsWrite(__CLASS__))sooh_trace::str('try destory session:'.$SessionKey.' with Pkey='.  json_encode($this->pkey).' flgNeedSave='.  var_export(self::$flgNeedSave,true));
-		$tb = null;
-		$db = self::getDBAndTbName($tb, $this->pkey, false);
-		try{
-			if(!empty(self::$funcOnLogout)){
-				if(is_array(self::$funcOnLogout) || is_string(self::$funcOnLogout))
-					call_user_func($this->funcOnLogout, $this->r);
-				else{
-					$f = self::$funcOnLogout;
-					$f($this->r);
-				}
-			}
-			$db->kvoDelete($tb,$this->pkey);
-			return true;
-		}catch(\ErrorException $e){
-			sooh_trace::exception($e);
-			return false;
-		}
-
+	public static function sess_destroy($SessionKey) {
+		$tmp = self::getInstance($SessionKey);
+		$tmp->delete(true);
+		return true;
 	}
- 
-	protected function sess_gc_one()
-	{
-		$tb = null;
-		$db = self::getDBAndTbName($tb, $this->pkey, false);
-		$retry = 5;
-		$ks = array_keys($this->pkey);
-		while($retry>0){
-			$retry--;
-			$rs = $db->getRecords($tb, '*', array('iLastDt<'=>self::$dtNow-self::$timeout), null, 5);
-			if(sooh_trace::needsWrite(__CLASS__))sooh_trace::obj('try  session-gc one by:'.sooh_broker::lastCmd(), $rs);
-			if(empty($rs)) break;
-			foreach( $rs as $r){
-				if(sooh_trace::needsWrite(__CLASS__))sooh_trace::str('try  session-gc one >>>>>>>>>>>:'.$r['sID']);
-				try{
-					if(!empty(self::$funcOnLogout)){
-						if(is_array(self::$funcOnLogout) || is_string(self::$funcOnLogout))
-							call_user_func($this->funcOnLogout, $r);
-						else{
-							$f = self::$funcOnLogout;
-							$f($r);
-						}
-					}
-					$pkey = array();
-					foreach ($ks as $k)$pkey[$k]=$r[$k];
-					$db->kvoDelete($tb,$pkey);
-					return true;
-				}catch(\ErrorException $e){
-					sooh_trace::exception($e);
-					return false;
-				}
-			}
+ 	/**
+	 * 
+	 * @param \Sooh\DB\Interfaces\All $maxlifetime
+	 * @param type $tbnameForLoop
+	 * @return boolean
+	 */
+	public static function sess_gc($maxlifetime,$tbnameForLoop=null) {
+		if($tbnameForLoop===null){
+			self::loop(__CLASS__.'::sess_gc');
+		}else{
+			$maxlifetime->delRecords($tbnameForLoop,array('sessionExpired<'=> \Sooh\Base\Time::getInstance()->timestamp()));
 		}
-	}
-	
-	function sess_gc($maxlifetime) {
-		if(sooh_trace::needsWrite(__CLASS__))sooh_trace::str('try session gc-all called:'. $maxlifetime);
 		return true;
 	}	
+ 	/**
+	 * 
+	 * @param \Sooh\DB\Interfaces\All $db
+	 * @param type $tbname
+	 * @return boolean
+	 */
+	public static function createTable($db=null,$tbname=null)
+	{
+		if($db===null){
+			self::loop(__CLASS__.'::createTable');
+		}else{
+			$db->ensureObj($tbname,array(
+					'sessionId'=>"varchar(64) not null default ''",
+					'sessionData'=>"varchar(4000) not null default ''",
+					'sessionExpired'=>"bigint not null default 0",
+					'iRecordVerID'=>"bigint not null default 0",
+					'user'=>"varchar(36) not null default ''",
+					'ip'=>"varchar(32) not null default ''",
+					'camefrom'=>"varchar(32) not null default ''",
+				),array('sessionId'));
+			error_log(\Sooh\DB\Broker::lastCmd());
+		}
+	}
 
-
+	public function freeOnShutdown()
+	{
+		
+	}
 	protected static $funcOnLogout;
 }
