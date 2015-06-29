@@ -52,9 +52,9 @@ try{
 ```
 这里只是举了几个例子，应该不难理解其作用。更多说明和举例参看：
 
-[where的构建](mds/db_where.md "数据库类基础使用方式")
+[where的构建](db_where.md "数据库类基础使用方式")
 
-[db常用函数](mds/db_basic.md "数据库类基础使用方式")
+[db常用函数](db_basic.md "数据库类基础使用方式")
 
 ## KVOBJ
 
@@ -122,4 +122,4 @@ try{
 }
 ```
 
-[更多kvobj说明](mds/db_kvobj.md "更多kvobj说明")
+[更多kvobj说明](db_kvobj.md "更多kvobj说明")
