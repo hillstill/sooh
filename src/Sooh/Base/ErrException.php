@@ -13,13 +13,14 @@ class ErrException extends \ErrorException{
 	}
 	
 	protected $isWrote=false;
-	public function getTraceAsString()
+	public function __toString()
 	{
-		$this->isWrote=true;
 		if($this->isWrote===false){
-			return '';
+			$this->isWrote=true;
+			return $this->getMessage()."[Sooh\Base\Error]".$this->getTraceString();
 		}else{
-			return parent::getTraceAsString();
+			return parent::__toString();
 		}
 	}
+	
 }
