@@ -19,12 +19,8 @@ class Time
 	/**
 	 * 给定日期对应的起止时间段的时间戳
 	 * <code>$r = Sooh\Base\Time::dayToBetween(time(), 2);</code>
-	 * <code>
-	 * echo date("Y-m-d H:i:s",$r[0]).'-'.date("Y-m-d H:i:s",$r[1])."\n";
-	 * 实际输出： 2015-03-18 00:00:00-2015-03-19 23:59:59
-	 * </code>
 	 * @param mixed $dt
-	 * @return array(timestamp, timestamp)   dt>=$r[0] and dt<$r[1]
+	 * @return array(timestamp, timestamp)   dt>=$r[0] and dt<$r[1] 2015-03-18 00:00:00-2015-03-19 23:59:59
 	 */
 	public static function dayToBetween($dt,$dur=1)
 	{
