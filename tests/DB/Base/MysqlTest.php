@@ -1,6 +1,6 @@
 <?php
 if(!class_exists('SoohDBTestBase')){
-	include __DIR__.'/../sqls/Base.php';
+	include __DIR__.'/../sqls/SoohDBTestBase.php';
 }
 class MysqlTest extends SoohDBTestBase {
 	protected function setUp() {
