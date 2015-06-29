@@ -50,7 +50,11 @@ try{
 	}
 }
 ```
-这里只是举了几个例子，应该不难理解其作用。更多说明和举例参看：[数据库类基础使用方式](mds/db_basic.md "数据库类基础使用方式")
+这里只是举了几个例子，应该不难理解其作用。更多说明和举例参看：
+
+[where的构建](mds/db_where.md "数据库类基础使用方式")
+
+[db常用函数](mds/db_basic.md "数据库类基础使用方式")
 
 ## KVOBJ
 
@@ -101,7 +105,7 @@ class TestClass extends Sooh\DB\Base\KVObj
 ##### 具体使用：
 按上面的设置，结果是按照ID的值分到2个库10张表中：
 	127.0.0.1: db_tmp0.tb_test_0,db_tmp0.tb_test_2,db_tmp0.tb_test_4,db_tmp0.tb_test_6,db_tmp0.tb_test_8,
-127.0.0.1: db_tmp1.tb_test_1,db_tmp1.tb_test_3,db_tmp1.tb_test_5,db_tmp1.tb_test_7,db_tmp1.tb_test_9,
+	127.0.0.1: db_tmp1.tb_test_1,db_tmp1.tb_test_3,db_tmp1.tb_test_5,db_tmp1.tb_test_7,db_tmp1.tb_test_9,
 
 样例代码：
 
@@ -118,3 +122,4 @@ try{
 }
 ```
 
+[更多kvobj说明](mds/db_kvobj.md "更多kvobj说明")
