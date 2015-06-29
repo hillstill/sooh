@@ -1,6 +1,6 @@
 <?php
 /**
- * Description of TstKVObj
+ * 测试用的 TstKVObj
  *
  * @author Simon Wang <hillstill_simon@163.com>
  */
