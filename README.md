@@ -2,14 +2,17 @@ Sooh: stone of  other hill
 ===================
 
 name cames from:Stone of Other Hills may Serve to Polish the Jade of This One.
-Ãû³ÆÀ´×ÔÓÚ: ËüÉ½Ö®Ê¯¿ÉÒÔ¹¥Óñ.
 
-**Base\\***
+åç§°æ¥è‡ªäº: å®ƒå±±ä¹‹çŸ³å¯ä»¥æ”»ç‰.
+
+##Base\\*
 basic classes, such as Ini,Time, Tools ....
-»ù´¡Àà, ÖîÈç ini ( ÅäÖÃÀà ), Time (Ê±¼äÀà), Tools(¹¤¾ßÀà).... 
+
+åŸºç¡€ç±», è¯¸å¦‚ ini ( é…ç½®ç±» ), Time (æ—¶é—´ç±»), Tools(å·¥å…·ç±»).... 
 [see details](mds/base.md "see details")
 
-**DB\\***
-classes based on database (abstract layer and classes for special cases) 
-Êı¾İ¿âÀà, Êı¾İ¿â·ÃÎÊ·â×°£¬ÒÔ¼°Ò»Ğ©ÌØ¶¨Ó¦ÓÃ³¡¾°µÄ·â×°Àà
+##DB\\*
+classes based on database (abstract layer and classes for special cases)ï¼Œ include kvobj (support table-split and cache) and other classes for special cases.
+
+æ•°æ®åº“ç±», æ•°æ®åº“è®¿é—®å°è£…ï¼ŒKVOBJç±»ï¼ˆå†…ç½®æ”¯æŒåˆ†è¡¨åˆ†åº“ï¼Œç¼“å­˜è¡¨ï¼‰ä»¥åŠä¸€äº›ç‰¹å®šåº”ç”¨åœºæ™¯çš„å°è£…ç±»
 [see details](mds/db.md "see details")
