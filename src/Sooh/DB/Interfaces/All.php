@@ -54,7 +54,7 @@ interface All
 	public function getRecords($obj, $fields, $where=null, $orderby=null,$pagesize=null,$rsfrom=0);
 	public function getRecordCount ($obj, $where=null, $orderby=null);
 	/**
-	 * random select several
+	 * random select several, 注意：不是所有的数据库都支持
 	 */
 	public function getRecordsRand($obj, $fields, $where=null, $orderby=null,$num=null);
 	
@@ -86,10 +86,16 @@ interface All
 	public function fetchAssocThenFree($result);
 	
 	/**
-	 * transaction
+	 * transaction 注意：不是所有的数据库都支持
 	 */
 	public function trans_begin();
+	/**
+	 * transaction 注意：不是所有的数据库都支持
+	 */	
 	public function trans_commit();
+	/**
+	 * transaction 注意：不是所有的数据库都支持
+	 */	
 	public function trans_cancel();	
 	/////////////////////////////////////////////////////////////////////////////////////////////KVObj
 	public function kvoFieldSupport();//true or false: if must load all
