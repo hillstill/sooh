@@ -726,7 +726,7 @@ class Mysql implements \Sooh\DB\Interfaces\All
 		$tables = array();
 		if($addDBNameWhenReturn)while (null!=($row = mysqli_fetch_row($rs))) $tables[] = $dbname.'.'.$row[0];
 		else while (null!=($row = mysqli_fetch_row($rs))) $tables[] = $row[0];
-		mysql_free_result($rs);
+		mysqli_free_result($rs);
 		return $tables;
 	}
 	public function setFieldDef ($obj, $old, $new, $def=null, $after=null)
