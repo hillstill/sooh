@@ -2,8 +2,6 @@
 namespace Sooh\DB\Base;
 
 //use \Sooh\DB\Error as sooh_dbField;
-use \Sooh\Base\Trace as sooh_trace;
-use \Sooh\DB\Broker as sooh_broker;
 use \Sooh\Base\Ini as sooh_ini;
 use \Sooh\DB\Broker as sooh_dbBroker;
 /**
@@ -62,9 +60,6 @@ abstract class KVObj
 		if(!isset(self::$_copies[$class][$md5])){
 			$o = new $class;
 			self::$_copies[$class][$md5] = $o->initConstruct()->initPkey($pkey);
-			if(sooh_trace::needsWrite(__CLASS__))sooh_trace::str($class.'::getCopy('. json_encode($pkey).') called, by new instance '.$md5);
-		}else{
-			if(sooh_trace::needsWrite(__CLASS__))sooh_trace::str($class.'::getCopy('. json_encode($pkey).') called, by exists instance '.$md5);
 		}
 		return self::$_copies[$class][$md5];
 	}
@@ -100,16 +95,13 @@ abstract class KVObj
 		$class = get_called_class();
 		if($pkey){
 			$md5 = md5(json_encode($pkey));
-			if(sooh_trace::needsWrite(__CLASS__))sooh_trace::str($class.'::freeAll('.  json_encode($pkey).') call, current has '.  sizeof(self::$_copies[$class]).' instances');
 			self::$_copies[$class][$md5]->free(false);
 			unset(self::$_copies[$class][$md5]);
-			if(sooh_trace::needsWrite(__CLASS__))sooh_trace::str($class.'::freeAll('.  json_encode($pkey).') done, current has '.  sizeof(self::$_copies[$class]).' instances');
 			if(empty(self::$_copies[$class])){
 				unset(self::$_copies[$class]);
 			}
 		}else{
 			foreach(self::$_copies as $class=>$rs){
-				if(sooh_trace::needsWrite(__CLASS__))sooh_trace::str($class.'::freeAll() start, current '.$class.' has '.  sizeof($rs).' instances');
 				foreach($rs as $k=>$o){
 					$o->free(false);
 					unset($rs[$k]);
@@ -117,13 +109,11 @@ abstract class KVObj
 				}
 				if(!empty(self::$_copies[$class]))unset(self::$_copies[$class]);
 			}
-			if(sooh_trace::needsWrite(__CLASS__))sooh_trace::str($class.'::freeAll() done');
 		}
 		
 	}
 	public function free($removeGlobal=true)
 	{
-		if(sooh_trace::needsWrite(__CLASS__))sooh_trace::str(get_called_class().'->free('.($removeGlobal?'needsRemoveGlobal':'').') called');
 		$pkey = $this->pkey;
 		$this->r=array();
 		$this->pkey=null;
@@ -153,23 +143,16 @@ abstract class KVObj
 	protected static function indexForSplit($pkey)
 	{
 		if(sizeof($pkey)==1){
-			if(static::numToSplit()<=10){
-				$n = current($pkey);
-				$n = substr($n,-2);
-				if($n==='0'){
-					return 0;
-				}
-				$n= $n-0;
-				if($n>0){
-					return $n;
-				}
+			$n = current($pkey);
+			if(is_numeric($n) && !strpos($n, '.')){
+				return $n%10000;
 			}
 		}
 		$s = md5(json_encode($pkey));
-		$s = substr($s,-3);
-		$n = base_convert($s, 16, 10);
-		$n = $n % 100;
-		return $n;
+		$n1 = base_convert(substr($s,-3), 16, 10);
+		$n2 = base_convert(substr($s,-6,3), 16, 10);
+		$n = $n2*100+($n1%100);
+		return $n%10000;
 	}
 	/**
 	 * 拆分成几个表
@@ -197,12 +180,14 @@ abstract class KVObj
 	protected static function getDBAndTbName(&$tbnameToSet,$pkey,$isCache=false)
 	{
 		$splitedId = static::indexForSplit($pkey);
+		self::$tmpId=$splitedId;
 		$ret = static::getDBAndTbNameById($tbnameToSet,$splitedId, $isCache);
 		if($ret===null){
 			throw new \ErrorException('can NOT find dbConf for '.get_called_class().($isCache?"Cache":'').':'.  json_encode($pkey).' $splitedId='.$splitedId);
 		}
 		return $ret;
 	}
+	protected static $tmpId=0;
 	protected static function idFor_dbByObj_InConf($isCache)
 	{
 		return get_called_class().($isCache?'Cache':'');
@@ -288,7 +273,7 @@ abstract class KVObj
 	{
 		return static::getDBAndTbName($this->tbname, $this->pkey,false);
 	}
-	
+	public $idForSplit=0;
 	/**
 	 * 
 	 * @return pkey | null
@@ -296,7 +281,6 @@ abstract class KVObj
 	public function reload()
 	{
 		$class = get_called_class();
-		if(sooh_trace::needsWrite($class))sooh_trace::str($class.'->'.__FUNCTION__.':iniCacheWhenVerIDIs='.$this->cacheWhenVerIDIs);
 		if(!empty($this->pkey) && !empty($this->loads)){
 			//deal with cache
 			if($this->cacheWhenVerIDIs){
@@ -304,24 +288,19 @@ abstract class KVObj
 				$dbCache = static::getDBAndTbName($tbCache, $this->pkey,true);
 				$this->r = $dbCache->kvoLoad($tbCache, $this->loads,$this->pkey);
 				if(empty($this->r)){
-					if(sooh_trace::needsWrite($class))sooh_trace::str($class.' cache miss try disk:'.  sooh_broker::lastCmd());
 					$db = static::getDBAndTbName($this->tbname, $this->pkey,false);
+					$this->idForSplit = self::$tmpId;
 					$this->r = $db->kvoLoad($this->tbname, '*',$this->pkey);
-					if(sooh_trace::needsWrite($class))sooh_trace::str($class.' load from disk:'.sooh_broker::lastCmd());
 					if(!empty($this->r)){
 						$dbCache->kvoNew($tbCache, $this->r, $this->pkey,array($this->fieldName_verid=>$this->r[$this->fieldName_verid]),$this->_fieldAutoInc);
-						if(sooh_trace::needsWrite($class))sooh_trace::str($class.' and update cache:'.sooh_broker::lastCmd());
 					}else{
 						$this->r=array();
-						if(sooh_trace::needsWrite($class))sooh_trace::str($class.' record not exists for ('.  json_encode($this->pkey).'):'.sooh_broker::lastCmd());
 					}
-				}else{
-					if(sooh_trace::needsWrite($class))sooh_trace::str($class.' load from cache:'.sooh_broker::lastCmd());
 				}
 			}else{
 				$db = static::getDBAndTbName($this->tbname, $this->pkey,false);
+				$this->idForSplit = self::$tmpId;
 				$this->r = $db->kvoLoad($this->tbname, $this->loads,$this->pkey);
-				if(sooh_trace::needsWrite($class))sooh_trace::str($class.' load from disk:'.sooh_broker::lastCmd());
 			}
 
 			if(!empty($this->r)){
@@ -743,7 +722,6 @@ abstract class KVObj
 											."\n check code of load(cur loaded:"
 													.(is_array($this->r)?implode(',',array_keys($this->r)):"NULL")
 											.")\npkey=". json_encode($this->pkey));
-				sooh_trace::exception($err);
 				throw $err;
 			}else{
 				return null;
@@ -846,7 +824,6 @@ abstract class KVObj
 		$class = get_called_class();
 		if(empty($this->chged)){
 			$err = new \ErrorException(get_called_class().':nothing needs to do');
-			sooh_trace::exception($err);
 			throw $err;
 		}
 		
@@ -863,12 +840,8 @@ abstract class KVObj
 				foreach($this->pkey as $k=>$v){
 					$this->r[$k]=$v;
 				}
-				if(sooh_trace::needsWrite($class)){
-					sooh_trace::str($class.' createNew '.sooh_broker::lastCmd());
-				}
 //				if($this->cacheWhenVerIDIs){
 //					$dbCache->kvoNew($tbCache, $this->r, $this->pkey,$verCurrent,$this->_fieldAutoInc);
-//					if(sooh_trace::needsWrite($class))sooh_trace::str($class.' update cache :'.sooh_broker::lastCmd());
 //				}
 				if(json_encode($pkeyBak) !== json_encode($this->pkey)){
 					$sOld=json_encode($pkeyBak);
@@ -878,9 +851,6 @@ abstract class KVObj
 					unset(self::$_copies[$class][$md5]);
 					self::$_copies[$class][$md5New] = $this;
 					$class = get_class();
-					if(sooh_trace::needsWrite($class)){
-						sooh_trace::str($class.' createNew with pkey changed, md5 from:'.$md5.'#'.$sOld.' to '.$md5New.'#'.$sNew);
-					}
 				}
 				
 			}else{
@@ -895,7 +865,6 @@ abstract class KVObj
 					}else{
 						$db->kvoUpdate($this->tbname, $this->r, $this->pkey, $verCurrent);
 					}
-					if(sooh_trace::needsWrite($class))sooh_trace::str($class.' update disk first:'.sooh_broker::lastCmd());
 					$this->r[$this->fieldName_verid]++;
 					if($this->r[$this->fieldName_verid]>99999999){
 						$this->r[$this->fieldName_verid]=1;
@@ -907,7 +876,6 @@ abstract class KVObj
 							$all=$this->r;
 						}
 						$dbCache->kvoUpdate($tbCache, $all, $this->pkey, $verCurrent,true);
-						if(sooh_trace::needsWrite($class))sooh_trace::str($class.' update cache:'.sooh_broker::lastCmd());
 					}
 				}else{
 					if($dbCache->kvoFieldSupport()){
@@ -915,13 +883,11 @@ abstract class KVObj
 					}else{
 						$dbCache->kvoUpdate($tbCache, $this->r, $this->pkey, $verCurrent);
 					}
-					if(sooh_trace::needsWrite($class))sooh_trace::str($class.' update cache['.  current($verCurrent).']:'.sooh_broker::lastCmd());
 					$this->r[$this->fieldName_verid]++;
 					if($this->r[$this->fieldName_verid]%$this->cacheWhenVerIDIs==0){
 						try{
 							$all = $dbCache->kvoLoad($tbCache, '*', $this->pkey);
 							$db->kvoUpdate($this->tbname, $all, $this->pkey, $verCurrent,true);
-							if(sooh_trace::needsWrite($class))sooh_trace::str($class.' update disk:'.sooh_broker::lastCmd());
 						}catch(\ErrorException $e){
 							error_log("fatal error: $class : update disk failed after cache updated");
 							throw $e;
@@ -967,7 +933,6 @@ abstract class KVObj
 				}
 			}
 		}
-		sooh_trace::str($e->getMessage()."\nDB-CMD:".json_encode($this->lastErrCmd).$e->getTraceAsString());
 		throw $e;
 	}
 	

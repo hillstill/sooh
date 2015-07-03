@@ -178,21 +178,3 @@ class Ini {
 		return $this->globals;
 	}
 }
-
-function var_log($var,$prefix=''){
-	if(is_a($var, "\Exception")){
-		$s = $var->__toString();
-		if(strpos($s,'[Sooh_Base_Error]')){
-			if(class_exists('\Sooh\DB\Broker',false)){
-				$sql = "\n".\Sooh\DB\Broker::lastCmd()."\n";
-			}else{
-				$sql = "\n";
-			}
-			error_log(str_replace('[Sooh_Base_Error]',$sql,$s));
-		}else{
-			error_log($prefix.$var->getMessage()."\n".$s);
-		}
-	}else{
-		error_log($prefix."\n".var_export($var,true));
-	}
-}

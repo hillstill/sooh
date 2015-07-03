@@ -17,7 +17,7 @@ class ErrException extends \ErrorException{
 	{
 		if($this->isWrote===false){
 			$this->isWrote=true;
-			return $this->getMessage()."[Sooh_Base_Error]".$this->getTraceString();
+			return $this->getMessage()."[Sooh_Base_Error]".$this->getTraceAsString();
 		}else{
 			return parent::__toString();
 		}
