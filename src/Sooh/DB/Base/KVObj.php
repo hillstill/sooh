@@ -21,6 +21,8 @@ abstract class KVObj
 	const onAfterLoaded='onAfterLoad';
 	const onBeforeSave ='onBeforeSave';
 	const onAfterSave = 'onAfterSave';
+	protected $fieldName_verid='iRecordVerID';
+	protected $fieldName_lockmsg='sLockData';//建议100字节长的字符串(默认'')，54个字节的基本长度，剩下的给lock的说明
 	protected $listener=array();
 	protected $chged=array();
 	protected $pkey;
@@ -28,7 +30,6 @@ abstract class KVObj
 	protected $r=array();
 	protected $loads=null;
 	protected $cacheWhenVerIDIs=0;
-	protected $fieldName_verid='iRecordVerID';
 	protected static $_copies=array();
 	
 	public static function searchAll($fields,$where,$tableByPkey=null)
@@ -635,48 +636,55 @@ abstract class KVObj
 	protected $fieldsSimple=array();
 	protected $lockedByMe=false;
 	/**
-	 * 锁定一条记录
+	 * 锁定一条记录(TODO: 分散设计后，应该没有很多的冲突几率，考虑加个冲突日志并酌情报警)
+	 * @param string $msg msg describe the reason
 	 * @param int $secExpire default 3year
 	 * @return boolean 
 	 * @throws ErrorException when record is locked already
 	 */
-	public function lock($secExpire=99999999)
+	public function lock($msg,$secExpire=94608000)
 	{
-		$dt = \Sooh\Base\Time::getInstance()->timestamp();
-		$this->lockedByMe=true;
-		$tmp = \Sooh\Base\NumStr::decode($this->r[$this->fieldName_verid], array('expire'=>10,'ver'=>8));
-		if($tmp['expire']>$dt){
-			$err= new \ErrorException('record locked already:'.$this->r[$this->fieldName_verid]);
-			error_log($err->getMessage()."\n".$err->getTraceAsString());
-			throw $err;
+		$dt = \Sooh\Base\Time::getInstance();
+		if(''!==($lockMsg=$this->isLocked())){
+			error_log('locked already');
+			return false;
 		}else{
 //			$err= new \ErrorException('record lock:'.$this->r[$this->fieldName_verid]);
 //			error_log($err->getMessage()."\n".$err->getTraceAsString());
-			
-			$newVer = \Sooh\Base\NumStr::encode(array('expire'=>$dt+$secExpire,'ver'=>$tmp['ver']), array('expire'=>10,'ver'=>8));
+			$tmp='expire='.($dt->timestamp()+$secExpire).'&msg='.$msg.'&ymd='.$dt->YmdFull.'&ip='. \Sooh\Base\Tools::remoteIP();
+
 			$where = $this->pkey;
-			$where[$this->fieldName_verid] = $tmp['ver'];
-			$ret = $this->db()->updRecords($this->tbname(), array($this->fieldName_verid=>$newVer), $where);
+			$where[$this->fieldName_verid] = $this->r[$this->fieldName_verid];
+			$ret = $this->db()->updRecords($this->tbname(), array($this->fieldName_verid=> $this->r[$this->fieldName_verid]+1,$this->fieldName_lockmsg=>$tmp), $where);
+			
 			if($ret===1){
-				$this->r[$this->fieldName_verid] = $newVer;
+				$this->r[$this->fieldName_verid]++;
+				$this->r[$this->fieldName_lockmsg]=$tmp;
+				$this->lockedByMe=true;
 				return true;
 			}else{
+				error_log('locked failed');
 				return false;
 			}
 		}
 	}
 	/**
 	 * 检查当前是否已经锁定
-	 * @return  Boolean 
+	 * @return  string '' means not locked, otherwise lock-reason returned 
 	 */
 	public function isLocked()
 	{
-		if($this->r[$this->fieldName_verid]>99999999){
-			$tmp = \Sooh\Base\NumStr::decode($this->r[$this->fieldName_verid], array('expire'=>10,'ver'=>8));
-			$dt = \Sooh\Base\Time::getInstance()->timestamp();
-			return $tmp['expire']>$dt;
+		if(!empty($this->r[$this->fieldName_lockmsg])){
+			$tmp = null;
+			parse_str($this->r[$this->fieldName_lockmsg], $tmp);
+			var_export($tmp,true);
+			if($tmp['expire']>\Sooh\Base\Time::getInstance()->timestamp()){
+				return $tmp['msg'];
+			}else{
+				return '';
+			}
 		}else {
-			return false;
+			return '';
 		}
 	}
 	public function isLockedByThisProcess()
@@ -684,28 +692,20 @@ abstract class KVObj
 		return $this->lockedByMe;
 	}
 	/**
-	 * 检查当前是否已经锁定
+	 * 解锁记录。（上锁后成功的update，就被解锁了，不用专门执行unlock）
 	 * @return  Boolean 
 	 */	
 	public function unlock()
 	{
-		$old = $this->r[$this->fieldName_verid];
-		$this->restoreVerId();
 		$where = $this->pkey;
-		$where[$this->fieldName_verid] = $old;
-		$ret = $this->db()->updRecords($this->tbname(), array($this->fieldName_verid=>$this->r[$this->fieldName_verid]), $where);
+		$where[$this->fieldName_verid] = $this->r[$this->fieldName_verid];
+		$ret = $this->db()->updRecords($this->tbname(), array($this->fieldName_verid=>$this->r[$this->fieldName_verid]+1,$this->fieldName_lockmsg=>''), $where);
 		if($ret===1){
+			$this->r[$this->fieldName_verid]++;
+			$this->r[$this->fieldName_lockmsg]='';
 			return true;
 		}else{
-			$this->r[$this->fieldName_verid]=$old;
 			return false;
-		}
-	}
-	protected function restoreVerId()
-	{
-		if($this->r[$this->fieldName_verid]>99999999){
-			$tmp = \Sooh\Base\NumStr::decode($this->r[$this->fieldName_verid], array('expire'=>10,'ver'=>8));
-			$this->r[$this->fieldName_verid]=$tmp['ver'];
 		}
 	}
 	/**
@@ -776,7 +776,7 @@ abstract class KVObj
 		try{
 			$where =  $this->pkey;
 			if($skipLock==false){
-				$where[$this->fieldName_verid.'<']=999999999;
+				$where[$this->fieldName_lockmsg]='';
 			}
 			$tbCache=null;
 			if($this->cacheWhenVerIDIs){
@@ -791,11 +791,9 @@ abstract class KVObj
 			
 			$this->chged=array();
 			$this->r=array();
-		} catch (Exception $ex) {
-
+		} catch (\Exception $ex) {
+			error_log($ex->getMessage().$ex->getTraceAsString());
 		}
-		
-		
 	}
 	
 	protected function fieldsUpds()
@@ -855,18 +853,28 @@ abstract class KVObj
 				
 			}else{
 				$verCurrent = array($this->fieldName_verid=>$this->r[$this->fieldName_verid]);
-				if($this->lockedByMe){
-					$this->restoreVerId ();
+				$whereForUpdate = $this->pkey;
+				if(isset($this->r[$this->fieldName_lockmsg])){
+					if(!empty($this->r[$this->fieldName_lockmsg]) && !$this->lockedByMe){
+						throw new \Sooh\Base\ErrException(\Sooh\Base\ErrException::msgLocked);
+					}
+					
+					if($this->lockedByMe){
+						$this->setField($this->fieldName_lockmsg, '');
+					}else{
+						$whereForUpdate[$this->fieldName_lockmsg]='';
+					}
 				}
+
 				if($this->cacheWhenVerIDIs<=1){
 					if($db->kvoFieldSupport()){
 						$fields = $this->fieldsUpds();
-						$db->kvoUpdate($this->tbname, $fields, $this->pkey, $verCurrent);
+						$db->kvoUpdate($this->tbname, $fields, $whereForUpdate, $verCurrent);
 					}else{
-						$db->kvoUpdate($this->tbname, $this->r, $this->pkey, $verCurrent);
+						$db->kvoUpdate($this->tbname, $this->r, $whereForUpdate, $verCurrent);
 					}
 					$this->r[$this->fieldName_verid]++;
-					if($this->r[$this->fieldName_verid]>99999999){
+					if($this->r[$this->fieldName_verid]>99999990){
 						$this->r[$this->fieldName_verid]=1;
 					}
 					if($this->cacheWhenVerIDIs){
@@ -875,19 +883,19 @@ abstract class KVObj
 						}else{
 							$all=$this->r;
 						}
-						$dbCache->kvoUpdate($tbCache, $all, $this->pkey, $verCurrent,true);
+						$dbCache->kvoUpdate($tbCache, $all, $whereForUpdate, $verCurrent,true);
 					}
 				}else{
 					if($dbCache->kvoFieldSupport()){
-						$dbCache->kvoUpdate($tbCache, $this->fieldsUpds(), $this->pkey, $verCurrent);
+						$dbCache->kvoUpdate($tbCache, $this->fieldsUpds(), $whereForUpdate, $verCurrent);
 					}else{
-						$dbCache->kvoUpdate($tbCache, $this->r, $this->pkey, $verCurrent);
+						$dbCache->kvoUpdate($tbCache, $this->r, $whereForUpdate, $verCurrent);
 					}
 					$this->r[$this->fieldName_verid]++;
 					if($this->r[$this->fieldName_verid]%$this->cacheWhenVerIDIs==0){
 						try{
 							$all = $dbCache->kvoLoad($tbCache, '*', $this->pkey);
-							$db->kvoUpdate($this->tbname, $all, $this->pkey, $verCurrent,true);
+							$db->kvoUpdate($this->tbname, $all, $whereForUpdate, $verCurrent,true);
 						}catch(\ErrorException $e){
 							error_log("fatal error: $class : update disk failed after cache updated");
 							throw $e;
