@@ -6,6 +6,9 @@ namespace Sooh\Base;
  * @author Simon Wang <hillstill_simon@163.com>
  */
 class ErrException extends \ErrorException{
+	const msgErrorArg='arg_error';
+	const msgServerBusy='server_busy';
+	const msgLocked='record_locked';
 	public static function factory($msg,$code)
 	{
 		$e = new ErrException($message, $code);
