@@ -8,10 +8,23 @@ namespace Sooh\Base;
 class RetSimple {
 	const ok=0;
 	const errDefault=-1;
-	public function __construct($ret=0,$msg='') {
-		$this->ret=$ret-0;
+	public function __construct($code=0,$msg='',$data=null) {
+		$this->code=$code-0;
 		$this->msg=$msg;
+		$this->data=$data;
 	}
-	public $ret=0;
+	public $code=0;
 	public $msg='';
+	public $data=null;
+	public function toArray()
+	{
+		$r=array('code'=>$this->code);
+		if(!empty($this->msg)){
+			$r['msg']=  $this->msg;
+		}
+		if(!empty($this->data)){
+			$r['data']=  $this->data;
+		}
+		return $r;
+	}
 }
