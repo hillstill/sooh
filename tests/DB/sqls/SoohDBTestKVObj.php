@@ -146,18 +146,17 @@ class SoohDBTestKVObj extends \PHPUnit_Framework_TestCase {
 		
 		$this->AssertEquals(false, $obj->isLocked(), 'islock()');
 		
-		$verid = $obj->db()->getOne($obj->tbname(),'iRecordVerID',array('autoid'=>99));
-		$this->AssertEquals(1, $verid, 'verid error on new of '.$obj->tbname());
-		$obj->lock();
-		$verid = $obj->db()->getOne($obj->tbname(),'iRecordVerID',array('autoid'=>99));
-		$this->AssertGreaterThan(103220943000000001, $verid, 'verid in db error on locked');
-		$verid = $obj->getField('iRecordVerID');
-		$this->AssertGreaterThan(103220943000000001, $verid, 'verid in code error on locked');
-		
-		$this->AssertEquals(true, $obj->isLocked(), 'islock()');
-		$obj->unlock();
-		$verid = $obj->db()->getOne($obj->tbname(),'iRecordVerID',array('autoid'=>99));
-		$this->AssertEquals(1, $verid, 'verid error on onlock');
+		$verid = $obj->db()->getOne($obj->tbname(),'sLockData',array('autoid'=>99));
+		$this->AssertEquals('', $verid, 'verid error on new of '.$obj->tbname());
+		$obj->lock('lock-test');
+		$verid = $obj->db()->getOne($obj->tbname(),'sLockData',array('autoid'=>99));
+		$this->AssertNotEquals('', $verid, 'verid in db error on locked');
+		$this->AssertNotEquals('', $obj->isLocked(), 'islock() error on locked');
+		$ret = $obj->unlock();
+		$this->AssertEquals(true, $ret, 'unlock failed');
+		$verid = $obj->db()->getOne($obj->tbname(),'sLockData',array('autoid'=>99));
+		$this->AssertEquals('', $verid, 'verid error on onlock');
+		$this->AssertEquals('', $obj->isLocked(), 'islock() error on unlocked');
 		
 		$obj->setField('pkey', 95);
 		$obj->update();
@@ -166,30 +165,30 @@ class SoohDBTestKVObj extends \PHPUnit_Framework_TestCase {
 		$this->AssertEquals(95, $verid, 'update failed error after unlock');
 		
 		//测试load的一个被锁住的
-		$verid = $obj->db()->updRecords($obj->tbname(),array('iRecordVerID'=>'183220943000000001'),array('autoid'=>99));
+		$verid = $obj->db()->updRecords($obj->tbname(),array('sLockData'=>'expire=1530768469&msg=lock-test&ymd=20150706&ip='),array('autoid'=>99));
 		
 		TstKVObj::freeAll(array('autoid'=>99));
 		$obj=null;
 
 		$obj = TstKVObj::getCopy(array('autoid'=>99));
 		$obj->load();
-		$this->AssertEquals(true, $obj->isLocked(), 'islock() for load locked already');
+		$this->AssertNotEquals('', $obj->isLocked(), 'islock() for load locked already');
 		try{
 			$obj->update();
 			$this->Fail('lock not works when loaded a locked-record');
 		}  catch (\ErrorException $e){
 
 		}
-		////测试一个load后被其他人锁住的
-		$verid = $obj->db()->updRecords($obj->tbname(),array('iRecordVerID'=>'2'),array('autoid'=>99));
+		////测试一个load后被其他人锁住的: 释放前面的锁
+		$verid = $obj->db()->updRecords($obj->tbname(),array('iRecordVerID'=>'2','sLockData'=>''),array('autoid'=>99));
 		TstKVObj::freeAll(array('autoid'=>99));
 		$obj=null;
 		$obj = TstKVObj::getCopy(array('autoid'=>99));
 		$obj->load();
-		$this->AssertEquals(false, $obj->isLocked(), 'islock() for load locked already');
+		$this->AssertEquals('', $obj->isLocked(), 'islock() for load locked already');
 		try{
 			$obj->setField('pkey', 99);
-			$obj->db()->updRecords($obj->tbname(),array('iRecordVerID'=>'183220943000000001'),array('autoid'=>99));
+			$obj->db()->updRecords($obj->tbname(),array('sLockData'=>'expire=1530768469&msg=lock-test&ymd=20150706&ip='),array('autoid'=>99));
 			
 			$obj->update();
 			$this->Fail('lock not works when update a locked-record');

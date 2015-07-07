@@ -26,6 +26,7 @@ class TstKVObj extends \Sooh\DB\Base\KVObj
 		$str = "";
 		foreach($ret['records'] as $r){
 			unset($r[$this->fieldName_verid]);
+			unset($r[$this->fieldName_lockmsg]);
 			$str.="[".  implode(',', $r)."]";
 		}
 		return $str;
