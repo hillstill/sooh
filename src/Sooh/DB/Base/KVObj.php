@@ -366,8 +366,8 @@ abstract class KVObj
 	 * a)以唯一索引（1个或2个字段，更多的暂不支持：2项效率高些，代码也好写，呵呵）作为排序条件，可以完美实现分页
 	 * b)以非唯一索引作为排序条件，有问题，
 	 * 举例（autoid,subkey）：
-	 * 传递过来的lastPage是空：array(array('autoid'=>'sort','subkey'=>'sort')),array('where'=>array(),['unique'=>1(默认),]),pager
-	 * 传递过来的lastPage非空：array(array('autoid'=>'sort','subkey'=>'sort')),decodedArr_lastPage,pager
+	 * 传递过来的lastPage是空：array('autoid'=>'sort','subkey'=>'sort'),array('where'=>array(),['unique'=>1(默认),]),pager
+	 * 传递过来的lastPage非空：array('autoid'=>'sort','subkey'=>'sort'),decodedArr_lastPage,pager
 	 * TODO:目前的代码只支持下一页，连上一页都待开发
 	 * @param array $sort_field_type
 	 * @param array $lastPage with extraWhere
