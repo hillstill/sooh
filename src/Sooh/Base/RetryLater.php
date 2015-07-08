@@ -6,6 +6,7 @@ namespace Sooh\Base;
  * @author Simon Wang <hillstill_simon@163.com>
  */
 class Retrylater {
+	const dtDone = '9999999999999999999';
 	protected $define=array('dt'=>12,'kept'=>4,'step'=>3);
 	public $step=0;
 	public $isDone=false;
@@ -19,7 +20,7 @@ class Retrylater {
 	 * @var bigint 小于此值的是需要重试的
 	 */
 	public $cmpVal;
-	public function __construct($arrSteps,$step=1,$maxForDone='9999999999999999999') 
+	public function __construct($arrSteps,$step=1,$maxForDone=self::dtDone) 
 	{
 		$this->arrSteps=$arrSteps;
 		$this->maxForDone=$maxForDone;
