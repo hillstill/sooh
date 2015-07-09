@@ -45,3 +45,6 @@ classes based on database (abstract layer and classes for special cases)， incl
 
 数据库类, 数据库访问封装，KVOBJ类（内置支持分表分库，缓存表）以及一些特定应用场景的封装类
 [see details](mds/db.md "see details")
+
+后续目标：
+目前支持mysql,mssql(微软提供的库),看过mongo,redis,oracle的文档，应该可以支持，但没写出对应封装类。
