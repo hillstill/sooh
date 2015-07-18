@@ -15,7 +15,11 @@ class Where
 			if($ifRealAppend==='markEmptyArray'){
 				$this->_emptyWhere[]=$k;
 				return $this;
-			}else throw new \ErrorException('empty Array Found when build where');
+			}else {
+				$err = new \ErrorException('empty Array was Found when build where');
+				error_log($err->getMessage()."\n".$err->getTraceAsString());
+				throw $err;
+			}
 		}
 		if (is_array($k)){
 			foreach($k as $i=>$v){

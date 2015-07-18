@@ -83,6 +83,11 @@ class Mysql implements \Sooh\DB\Interfaces\All
 	{
 		$this->_connection = $conf;
 	}
+	/**
+	 * where用的一个函数，使用中无视
+	 * @param type $tmp
+	 * @return type
+	 */
 	public function _tmpObj($tmp)
 	{
 		$bak = $this->objForCreateWhere;
