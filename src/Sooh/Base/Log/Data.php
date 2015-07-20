@@ -159,6 +159,7 @@ class Data {
 		$log = self::getInstance();
 		if($log->justNew){
 			$log->write(self::type_evt);
+			$log->justNew=false;
 		}
 		$ks = array_keys(self::$writer);
 		foreach($ks as $k){
@@ -219,7 +220,8 @@ class Data {
 	public function nextOne()
 	{
 		if($this->justNew){
-			throw new \Sooh\Base\ErrException('try new log before log->toArray()');
+			$this->write();
+			$this->resChanged=array();
 		}
 		$old = substr($this->logGuid,-9);
 		$new= $old+100000;
