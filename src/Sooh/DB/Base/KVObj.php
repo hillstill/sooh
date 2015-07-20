@@ -21,6 +21,8 @@ abstract class KVObj
 	const onAfterLoaded='onAfterLoad';
 	const onBeforeSave ='onBeforeSave';
 	const onAfterSave = 'onAfterSave';
+	public static $__id_in_dbByObj='default';
+	public static $__nSplitedBy=1;
 	protected $fieldName_verid='iRecordVerID';
 	protected $fieldName_lockmsg='sLockData';//建议100字节长的字符串(默认'')，54个字节的基本长度，剩下的给lock的说明
 	protected $listener=array();
@@ -159,7 +161,7 @@ abstract class KVObj
 	 * 拆分成几个表
 	 * @return int
 	 */
-	protected static function numToSplit(){return 1;}
+	protected static function numToSplit(){return static::$__nSplitedBy;}
 	/**
 	 * 根据拆分id，确认实际的表名
 	 * @param int $n
@@ -191,7 +193,7 @@ abstract class KVObj
 	protected static $tmpId=0;
 	protected static function idFor_dbByObj_InConf($isCache)
 	{
-		return get_called_class().($isCache?'Cache':'');
+		return static::$__id_in_dbByObj.($isCache?'Cache':'');
 	}
 	protected static function getDBAndTbNameById(&$tbnameToSet,$splitedId,$isCache=false)
 	{

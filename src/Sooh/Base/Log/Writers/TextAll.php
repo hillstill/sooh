@@ -16,10 +16,14 @@ class TextAll {
 	 */
 	public function write($logData)
 	{
+		$arr = $logData->toArray();
+		$ret = array('ret'=>$arr['ret']);
+		unset($arr['ret']);
+		$arr = array_merge($ret,$arr);
 		if($this->fullname==='/'){
-			error_log(json_encode($logData->toArray()));
+			error_log(json_encode($arr));
 		}else{
-			file_put_contents($this->fullname, json_encode($logData->toArray()), FILE_APPEND);
+			file_put_contents($this->fullname, '['.date('m-d H:i:s').']'.json_encode($arr), FILE_APPEND);
 		}
 	}
 	public function free()

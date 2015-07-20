@@ -18,8 +18,12 @@ class TextDailyFile {
 	 */
 	public function write($logData)
 	{
+		$arr = $logData->toArray();
+		$ret = array('ret'=>$arr['ret']);
+		unset($arr['ret']);
+		$arr = array_merge($ret,$arr);
 		$fullname = $this->path.'/'.$logData->ymd.'-'.  $this->file;
-		file_put_contents($fullname, json_encode($logData->toArray()), FILE_APPEND);
+		file_put_contents($fullname, json_encode($arr), FILE_APPEND);
 	}
 	public function free()
 	{

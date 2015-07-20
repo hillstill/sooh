@@ -2,10 +2,24 @@
 namespace Sooh\Base\Log;
 /**
  * 日志模块，用法：
- * \Sooh\Base\Log\Data::addWriter(new \Sooh\Base\Log\Writers\TextAll('',''),'trace');
- * \Sooh\Base\Log\Data::addWriter(new \Sooh\Base\Log\Writers\TextAll('',''),'error');
- * \Sooh\Base\Log\Data::addWriter(new \Sooh\Base\Log\Writers\TextAll('',''),'evt');
- * \Sooh\Base\Log\Data::getInstance('c');
+		//in dispatcher before ctrl start
+		\Sooh\Base\Log\Data::addWriter(new \Sooh\Base\Log\Writers\TextAll(),'trace');
+		\Sooh\Base\Log\Data::addWriter(new \Sooh\Base\Log\Writers\TextAll(),'error');
+		\Sooh\Base\Log\Data::addWriter(new \Sooh\Base\Log\Writers\Database('dbgrpForLog', 2),'evt');
+		$l = \Sooh\Base\Log\Data::getInstance('c');
+		$l->evt = mod/ctr;/act....;
+
+		//in ctrl
+		$l = \Sooh\Base\Log\Data::getInstance();
+		$l->clientType=900;
+		$l->deviceId = \Lib\Session::getSessId();
+		$l->appendResChange('gold', 1, 1);
+		$l->appendResChange('silver', 10, 20);
+ * 
+ *		//$l->nextOne();
+ * 
+		//in dispatcher after ctrl done
+		\Sooh\Base\Log\Data::onShutdown();
  * 
  * 
  * @author Simon Wang <hillstill_simon@163.com>
@@ -59,7 +73,8 @@ class Data {
 			self::$_instance->ymd=$dt->YmdFull;
 			self::$_instance->hhiiss=$dt->his;
 			self::$_instance->ip = \Sooh\Base\Tools::remoteIP();
-			self::$_instance->logGuid = self::$_instance->newLogId($guidtype);	
+			self::$_instance->logGuid = self::$_instance->newLogId($guidtype);
+			\Sooh\Base\Ini::registerShutdown(get_called_class().'::onShutdown', 'logOnShutdown');
 		}
 		return self::$_instance;
 	}
@@ -191,13 +206,13 @@ class Data {
 				error_log("write twice??");
 			}
 		}else{
-			$fs = self::$writer[self::type_evt];
+			$fs = self::$writer[$asType];
 			if(!empty($fs)){
 				foreach($fs as $_ignore_){
 					$_ignore_->write($this);
 				}
 			}else{
-				error_log("log-func undefined ");
+				error_log("log-func undefined ". http_build_query($_GET));
 			}
 		}
 	}
@@ -215,6 +230,25 @@ class Data {
 	public function appendResChange($res,$chg,$new)
 	{
 		$this->resChanged[]=array('resName'=>$res,'resChg'=>$chg,'resNew'=>$new);
+	}
+	
+	/**
+	 * 
+	 * @param string $mainType
+	 * @param string $subType
+	 * @param string $target
+	 * @param int $num
+	 * @param string $ext
+	 * @return \Sooh\Base\Log\Data
+	 */
+	public function setThese($mainType,$subType,$target,$num,$ext)
+	{
+		$this->mainType = $mainType;
+		$this->subType = $subType;
+		$this->target = $target;
+		$this->num = $num;
+		$this->ext = $ext;
+		return $this;
 	}
 	
 	public function nextOne()

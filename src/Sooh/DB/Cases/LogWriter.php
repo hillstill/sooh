@@ -10,7 +10,7 @@ class LogWriter extends \Sooh\DB\Base\KVObj {
 	public static $__YMD=20150401;
 	public static $__id_in_dbByObj='use_db_log';
 	public static $__type='a';
-	public static $__nSplitedBy=10;
+	public static $__nSplitedBy=1;
 	public static $__fields=array(
 			'logGuid'=>"bigint unsigned NOT NULL DEFAULT 0",
 			'deviceId'=>'varchar(64) not null',

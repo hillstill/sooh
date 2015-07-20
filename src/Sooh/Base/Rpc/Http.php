@@ -17,7 +17,7 @@ class Http extends Base{
 		
 		$ret = \Sooh\Base\Tools::httpGet($url);
 		if(self::$debugMod){
-			error_log("RPC-HTTP:$url\n".var_export($ret,true));
+			error_log("RPC-HTTP[PID:".  getmypid()."]:$url\n".var_export($ret,true));
 		}
 		$r = json_decode($ret,true);
 		if($r){
