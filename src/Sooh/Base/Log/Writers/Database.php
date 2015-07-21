@@ -23,11 +23,11 @@ class Database {
 		$arr = $logData->toArray();
 		unset($arr['resChanged']);
 		unset($arr['logGuid']);
-		\Sooh\DB\Cases\LogWriter::$__YMD= \Sooh\Base\Time::getInstance()->YmdFull;
-		\Sooh\DB\Cases\LogWriter::$__id_in_dbByObj='dbgrpForLog';
-		\Sooh\DB\Cases\LogWriter::$__type='a';
-		//\Sooh\DB\Cases\LogWriter::$__fields=array(.....);
-		$tmp = \Sooh\DB\Cases\LogWriter::getCopy($logData->logGuid);
+		\Sooh\DB\Cases\LogStorage::$__YMD= \Sooh\Base\Time::getInstance()->YmdFull;
+		\Sooh\DB\Cases\LogStorage::$__id_in_dbByObj='dbgrpForLog';
+		\Sooh\DB\Cases\LogStorage::$__type='a';
+		//\Sooh\DB\Cases\LogStorage::$__fields=array(.....);
+		$tmp = \Sooh\DB\Cases\LogStorage::getCopy($logData->logGuid);
 		foreach($arr as $k=>$v){
 			$tmp->setField($k, $v);
 		}

@@ -56,7 +56,7 @@ class Tools {
 			$output = curl_exec($ch);
 			$err=curl_error($ch);
 			if(!empty($err)){
-				error_log('[errorFailed]'.$url);
+				error_log('[errorFailed:'.$err.']'.$url);
 			}
 			self::$httpCodeLast = curl_getinfo($ch,CURLINFO_HTTP_CODE);
 			curl_close($ch);

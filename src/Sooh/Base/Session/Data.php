@@ -1,8 +1,22 @@
 <?php
 namespace Sooh\Base\Session;
 /**
- * Session, rpc请直接访问SessionStorage
- *
+ * Session， 使用方式：
+ * 构建一个project的storage类
+ *     class \Lib\SessionStorage extends \Sooh\Base\Session\Storage{}
+ * 
+ * framework初始化(ctrl->action之前)
+ *     不通过RPC读写
+ *         \Lib\SessionStorage::setStorageIni('session', 2);
+ *         \Sooh\Base\Session\Data::getInstance( \Lib\SessionStorage::getInstance(null));
+ *     通过RPC读写
+ *         $rpc = new \Sooh\Base\Rpc\Http($this->ini->get('SignKeyForService'), $this->ini->get('hostsOfMssqlAPI.default'));
+ *         \Sooh\Base\Session\Data::getInstance( \Lib\SessionStorage::getInstance($rpc));
+ * 
+ * ctrl的action or lib 中
+ *     \Sooh\Base\Session\Data::getInstance()->get(key, defaultVal);
+ *     \Sooh\Base\Session\Data::getInstance()->set(key, value[, secondExpire]);
+ * 
  * @author Simon Wang <hillstill_simon@163.com>
  */
 class Data {

@@ -2,24 +2,24 @@
 namespace Sooh\Base\Log;
 /**
  * 日志模块，用法：
-		//in dispatcher before ctrl start
-		\Sooh\Base\Log\Data::addWriter(new \Sooh\Base\Log\Writers\TextAll(),'trace');
-		\Sooh\Base\Log\Data::addWriter(new \Sooh\Base\Log\Writers\TextAll(),'error');
-		\Sooh\Base\Log\Data::addWriter(new \Sooh\Base\Log\Writers\Database('dbgrpForLog', 2),'evt');
-		$l = \Sooh\Base\Log\Data::getInstance('c');
-		$l->evt = mod/ctr;/act....;
+ *		in dispatcher before ctrl->action start
+			\Sooh\Base\Log\Data::addWriter(new \Sooh\Base\Log\Writers\TextAll(),'trace');
+			\Sooh\Base\Log\Data::addWriter(new \Sooh\Base\Log\Writers\TextAll(),'error');
+			\Sooh\Base\Log\Data::addWriter(new \Sooh\Base\Log\Writers\Database('dbgrpForLog', 2),'evt');
+			$l = \Sooh\Base\Log\Data::getInstance('c');
+			$l->evt = mod/ctr;/act....;
 
-		//in ctrl
-		$l = \Sooh\Base\Log\Data::getInstance();
-		$l->clientType=900;
-		$l->deviceId = \Lib\Session::getSessId();
-		$l->appendResChange('gold', 1, 1);
-		$l->appendResChange('silver', 10, 20);
+ *		in ctrl->action or lib
+			$l = \Sooh\Base\Log\Data::getInstance();
+			$l->clientType=900;
+			$l->deviceId = \Lib\Session::getSessId();
+			$l->appendResChange('gold', 1, 1);
+			$l->appendResChange('silver', 10, 20);
  * 
- *		//$l->nextOne();
+			//$l->nextOne();
  * 
-		//in dispatcher after ctrl done
-		\Sooh\Base\Log\Data::onShutdown();
+ *		in dispatcher after ctrl->action done
+			\Sooh\Base\Log\Data::onShutdown();
  * 
  * 
  * @author Simon Wang <hillstill_simon@163.com>

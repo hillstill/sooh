@@ -64,7 +64,7 @@ class Storage {
 			try{
 				if (!empty($trans['sessionId']) && $trans['sessionId']!=$sessionId){
 					\Sooh\Base\Log\Data::error("ERROR on update session with sessionId dismatch: $sessionId",array('trans'=>$trans,'data'=>$sessData));
-					return false;
+					return 'error';
 				}else{
 					$obj = \Sooh\DB\Cases\SessionStorage::getCopy($sessionId);
 					//unset($trans['sessionId']);
@@ -74,11 +74,11 @@ class Storage {
 					//unset($trans['iRecordVerID']);
 					$obj->setSessionData($sessData);
 					$obj->update();
-					return true;
+					return 'done';
 				}
 			}  catch (\Exception $e){
 				\Sooh\Base\Log\Data::error('errorOnUpdateSession',$e);
-				return false;
+				return 'error:'.$e->getMessage();
 			}
 		}else{
 			$class = explode('\\',get_called_class());

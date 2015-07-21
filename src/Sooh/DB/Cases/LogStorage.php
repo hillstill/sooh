@@ -1,12 +1,12 @@
 <?php
-namespace Sooh\DB\Cases;//LogWriter
+namespace Sooh\DB\Cases;
 
 /**
  * 记录日志的控制类
  *
  * @author Simon Wang <hillstill_simon@163.com>
  */
-class LogWriter extends \Sooh\DB\Base\KVObj {
+class LogStorage extends \Sooh\DB\Base\KVObj {
 	public static $__YMD=20150401;
 	public static $__id_in_dbByObj='use_db_log';
 	public static $__type='a';
@@ -24,7 +24,7 @@ class LogWriter extends \Sooh\DB\Base\KVObj {
 			'subType'=>'varchar(64)',
 			'target'=>'varchar(128)',
 			'num'=>'int not null default 0',
-			'ext'=>'varchar(64)',
+			'ext'=>'varchar(512)',
 			'ret'=>'varchar(2000)',
 			'narg1'=>'int not null default 0',
 			'narg2'=>'int not null default 0',
@@ -62,7 +62,7 @@ class LogWriter extends \Sooh\DB\Base\KVObj {
 	}
 	/**
 	 * 
-	 * @return  \Sooh\DB\Cases\LogWriter
+	 * @return  LogStorage
 	 */
 	public static function getCopy($guid)
 	{
