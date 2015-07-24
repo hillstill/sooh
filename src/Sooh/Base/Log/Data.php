@@ -123,7 +123,7 @@ class Data {
 	 */		
 	public $num=0;
 	/**
-	 * @var  VARCHAR(64)
+	 * @var  VARCHAR(512)
 	 */
 	public $ext='';
 	/**
