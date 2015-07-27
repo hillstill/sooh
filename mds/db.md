@@ -104,8 +104,10 @@ class TestClass extends Sooh\DB\Base\KVObj
 
 ##### 具体使用：
 按上面的设置，结果是按照ID的值分到2个库10张表中：
+
 	127.0.0.1: db_tmp0.tb_test_0,db_tmp0.tb_test_2,db_tmp0.tb_test_4,db_tmp0.tb_test_6,db_tmp0.tb_test_8,
-	127.0.0.1: db_tmp1.tb_test_1,db_tmp1.tb_test_3,db_tmp1.tb_test_5,db_tmp1.tb_test_7,db_tmp1.tb_test_9,
+
+	127.0.0.2: db_tmp1.tb_test_1,db_tmp1.tb_test_3,db_tmp1.tb_test_5,db_tmp1.tb_test_7,db_tmp1.tb_test_9,
 
 样例代码：
 
