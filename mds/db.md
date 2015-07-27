@@ -32,7 +32,7 @@ $app->run();
 
 ##### 3）获取数据库访问实例：
 ```php
-$db = Sooh\DB\Broker::getInstance('mssql');
+$db = Sooh\DB\Broker::getInstance('other');
 ```
 ##### 4）执行各种命令
 ```php
