@@ -50,7 +50,7 @@ class Account {
 	}
 	/**
 	 *
-	 * @var \Sooh\Base\Rpc\Base 
+	 * @var \Sooh\Base\Rpc\Broker 
 	 */
 	protected $rpc=null;
 	/**
@@ -74,7 +74,9 @@ class Account {
 	 */
 	public function login($accountname,$password,$camefrom='local',$customArgs=array('contractId'))
 	{
-		if($this->rpc===null){
+		if($this->rpc!==null){
+			return $this->rpc->initArgs(array('accountname'=>$accountname,'password'=>$password,'camefrom'=>$camefrom,'customArgs'=>$customArgs))->send(__FUNCTION__);
+		}else{
 			$this->setAccountStorage($accountname, $camefrom);
 			$this->account->load();
 			if($this->account->exists()){
@@ -123,7 +125,7 @@ class Account {
 				try{
 					$this->account->update();
 				} catch (\ErrorException $ex) {
-					\Sooh\Base\Log\Data::error("error on update account when login:".$e->getMessage()."\n".\Sooh\DB\Broker::lastCmd()."\n".$ex->getTraceAsString());
+					\Sooh\Base\Log\Data::error("error on update account when login:".$ex->getMessage()."\n".\Sooh\DB\Broker::lastCmd()."\n".$ex->getTraceAsString());
 				}
 				if(is_array($ret)){
 					return $ret;
@@ -134,8 +136,6 @@ class Account {
 			}else{
 				throw new \Sooh\Base\ErrException(self::errAccountOrPasswordError,404);
 			}
-		}else{
-			return $this->rpc->call('Account/'.__FUNCTION__, array($accountname,$password,$camefrom));
 		}
 	}
 	/**
@@ -149,7 +149,9 @@ class Account {
 	 */
 	public function register($accountname,$password,$camefrom='local',$customArgs=array())
 	{
-		if($this->rpc===null){
+		if($this->rpc!==null){
+			return $this->rpc->initArgs(array('accountname'=>$accountname,'password'=>$password,'camefrom'=>$camefrom,'customArgs'=>$customArgs))->send(__FUNCTION__);
+		}else{
 			$this->setAccountStorage($accountname, $camefrom);
 			$this->account->load();
 			if($this->account->exists()){
@@ -181,8 +183,6 @@ class Account {
 				}
 				throw new \Sooh\Base\ErrException(self::errRetryLater,400);
 			}
-		}else{
-			return $this->rpc->call('Account/'.__FUNCTION__, array($accountname,$password,$camefrom));
 		}
 	}
 

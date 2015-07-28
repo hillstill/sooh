@@ -43,7 +43,9 @@ class Storage {
 	 */
 	public function load($sessionId)
 	{
-		if($this->rpc===null){
+		if($this->rpc!==null){
+			return $this->rpc->initArgs(array('sessionId'=>$sessionId))->send(__FUNCTION__);
+		}else{
 			$obj = \Sooh\DB\Cases\SessionStorage::getCopy($sessionId);
 			$obj->load();
 			if(!$obj->exists()){
@@ -51,16 +53,14 @@ class Storage {
 			}else{
 				return array('data'=> $obj->getSessionData(),'trans'=>$obj->getArrayTrans());
 			}
-		}else{
-			$class = explode('\\',get_called_class());
-			$class = array_pop($class);
-			return $this->rpc->call($class.'/'.__FUNCTION__, array($sessionId));
 		}
 	}
 	
 	public function update($sessionId,$sessData,$trans)
 	{
-		if($this->rpc===null){
+		if($this->rpc!==null){
+			return $this->rpc->initArgs(array('sessionId'=>$sessionId,'sessData'=>$sessData,'trans'=>$trans))->send(__FUNCTION__);
+		}else{
 			try{
 				if (!empty($trans['sessionId']) && $trans['sessionId']!=$sessionId){
 					\Sooh\Base\Log\Data::error("ERROR on update session with sessionId dismatch: $sessionId",array('trans'=>$trans,'data'=>$sessData));
@@ -80,10 +80,6 @@ class Storage {
 				\Sooh\Base\Log\Data::error('errorOnUpdateSession',$e);
 				return 'error:'.$e->getMessage();
 			}
-		}else{
-			$class = explode('\\',get_called_class());
-			$class = array_pop($class);
-			return $this->rpc->call($class.'/'.__FUNCTION__, array($sessionId,$sessData,$trans));
 		}
 	}
 }
