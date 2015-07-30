@@ -26,6 +26,7 @@ class Database {
 		\Sooh\DB\Cases\LogStorage::$__YMD= \Sooh\Base\Time::getInstance()->YmdFull;
 		\Sooh\DB\Cases\LogStorage::$__id_in_dbByObj='dbgrpForLog';
 		\Sooh\DB\Cases\LogStorage::$__type='a';
+		\Sooh\DB\Cases\LogStorage::$__nSplitedBy=$this->tbSplit;
 		//\Sooh\DB\Cases\LogStorage::$__fields=array(.....);
 		$tmp = \Sooh\DB\Cases\LogStorage::getCopy($logData->logGuid);
 		foreach($arr as $k=>$v){

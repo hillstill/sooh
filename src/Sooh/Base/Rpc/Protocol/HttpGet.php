@@ -14,8 +14,9 @@ class HttpGet {
 	{
 		$dt = \Sooh\Base\Time::getInstance()->timestamp();
 		$url = $host.'&service='.$service.'&cmd='.$cmd.'&args='. urlencode(json_encode($args)).'&dt='.($dt-0).'&sign='.urlencode($sign);
-		error_log($url);
+if('rpcservices'!=$service)error_log("[RPC@".  getmypid()."]".$url);
 		$ret = \Sooh\Base\Tools::httpGet($url);
+if('rpcservices'!=$service)error_log("[RPC@".  getmypid()."]".$ret);
 		if(200==\Sooh\Base\Tools::httpCodeLast()){
 			return $ret;
 		}else{

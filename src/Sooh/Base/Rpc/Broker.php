@@ -27,7 +27,8 @@ class Broker {
 		if(!isset(self::$_instances[$serviceName])){
 			$_ini = self::getRpcIni($serviceName);
 			if(empty($_ini)){
-				throw new \Sooh\Base\ErrException('unknown service:'.$serviceName);
+				//throw new \Sooh\Base\ErrException('unknown service:'.$serviceName);
+				return null;
 			}
 			if(empty($_ini['protocol'])){
 				$_ini['protocol']='HttpGet';
@@ -98,14 +99,20 @@ class Broker {
 			$rand = array_rand($hosts);
 			$host = $hosts[$rand];
 			unset($hosts[$rand]);
-			error_log("###########{$this->final_protocol}:{$host}, {$this->final_service}, {$this->final_cmd},".  json_encode($this->final_args));
+if('rpcservices'!=$this->final_service)error_log("###########{$this->final_protocol}:{$host}, {$this->final_service}, {$this->final_cmd},".  json_encode($this->final_args));
 			$ret = $this->getSender($this->final_protocol)->_send($host, $this->final_service, $this->final_cmd, $this->final_args,$timestamp,$this->clacSign($timestamp));
 			if(empty($ret)){
 				\Sooh\Base\Log\Data::error("found_rpc_server_down:".$host.' with cmd');
 			}else{
 				$arr = json_decode($ret,true);
 				if(is_array($arr)){
-					return $arr;
+					if($arr['code']==200){
+						return $arr['data'];
+					}else{
+						$err = new \Sooh\Base\ErrException($arr['msg'],$arr['code']);
+						$err->customData = $arr['data'];
+						throw $err;
+					}
 				}
 			}
 		}

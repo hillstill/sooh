@@ -43,7 +43,8 @@ class Account {
 	public static function getInstance($rpcOnNew=null)
 	{
 		if(self::$_instance===null){
-			self::$_instance = new Account;
+			$cc = get_called_class();
+			self::$_instance = new $cc;
 			self::$_instance->rpc = $rpcOnNew;
 		}
 		return self::$_instance;
@@ -79,6 +80,7 @@ class Account {
 		}else{
 			$this->setAccountStorage($accountname, $camefrom);
 			$this->account->load();
+			$ret = $this->account->exists();
 			if($this->account->exists()){
 				$dt = \Sooh\Base\Time::getInstance();
 				$cmp = md5($password.$this->account->getField('passwd_salt'));
@@ -176,7 +178,11 @@ class Account {
 					try{
 						$this->account->setField('accountId',$tmpid);
 						$this->account->update();
-						return array_merge(array('accountId'=>  $tmpid, 'nickname'=>$accountname),$customArgs['contractId']);
+						$tmp = array('accountId'=>$tmpid, 'nickname'=>$accountname);
+						foreach($customArgs as $k=>$v){
+							$tmp[$k]=$v;
+						}
+						return $tmp;
 					}catch(\Exception $e){
 						error_log($e->getMessage()."[try accountId:$tmpid]");
 					}

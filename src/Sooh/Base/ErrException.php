@@ -14,7 +14,7 @@ class ErrException extends \ErrorException{
 		$e = new ErrException($message, $code);
 		return $e;
 	}
-	
+	public $customData=null;
 	protected $isWrote=false;
 	public function __toString()
 	{
