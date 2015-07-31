@@ -177,4 +177,22 @@ class Ini {
 	{
 		return $this->globals;
 	}
+	/**
+	 * 返回cookie-domain,优先使用配置项CookieDomainBase
+	 * @return string
+	 */
+	public function cookieDomain()
+	{
+		$cookieDomain=  $this->get('CookieDomainBase');
+		if(empty($cookieDomain)){
+			$r = explode('.', $_SERVER['SERVER_NAME']);
+			if(sizeof($r)==4 && is_numeric($r[0]) && is_numeric($r[1]) && is_numeric($r[2]) && is_numeric($r[3])){
+				$cookieDomain=$_SERVER['SERVER_NAME'];
+			}else{
+				$r[0]='';
+				$cookieDomain = implode('.',$r);
+			}
+		}
+		return $cookieDomain;
+	}
 }

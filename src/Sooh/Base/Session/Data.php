@@ -45,14 +45,11 @@ class Data {
 		if(isset($_COOKIE[self::SessionIdName])){
 			return $_COOKIE[self::SessionIdName];
 		}else{
-			$r = explode('.', $_SERVER['SERVER_NAME']);
+			
 			$_COOKIE[self::SessionIdName] = md5(microtime(true).\Sooh\Base\Tools::remoteIP());
-			if(sizeof($r)==4 && is_numeric($r[0]) && is_numeric($r[1]) && is_numeric($r[2]) && is_numeric($r[3])){
-				setcookie(self::SessionIdName, $_COOKIE[self::SessionIdName], time()+315360000, null, $_SERVER['SERVER_NAME']);
-			}else{
-				$r[0]='';
-				setcookie(self::SessionIdName, $_COOKIE[self::SessionIdName], time()+315360000, null, implode('.',$r));
-			}
+			$cookieDomain=  \Sooh\Base\Ini::getInstance()->cookieDomain();
+			
+			setcookie(self::SessionIdName, $_COOKIE[self::SessionIdName], time()+315360000, '/', $cookieDomain);
 		}
 	}
 
