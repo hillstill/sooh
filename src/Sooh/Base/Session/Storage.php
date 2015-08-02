@@ -74,7 +74,7 @@ class Storage {
 					//unset($trans['iRecordVerID']);
 					$obj->setSessionData($sessData);
 					$obj->update();
-					error_log(">>>>>>>>>>>session>>>$sessionId\n".  var_export($sessData,true)."\n".  var_export($trans,true));
+					//error_log(">>>>>>>>>>>session>>>$sessionId\n".  var_export($sessData,true)."\n".  var_export($trans,true));
 					return 'done';
 				}
 			}  catch (\Exception $e){

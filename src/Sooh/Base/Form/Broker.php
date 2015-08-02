@@ -1,38 +1,56 @@
 <?php
 namespace Sooh\Base\Form;
-use \Sooh\Base\Form\Item as  sooh_formdef;
 /**
  * 表单基类, items可以设置非\Sooh\Base\Form\Item：表示hidden模式的
  *
  * @author Simon Wang <hillstill_simon@163.com>
  */
-class Base {
+class Broker {
+	const type_c = 'create';
+	const type_u = 'update';
+	const type_s = 'search';
+	public $url;
+	public $method='get';
+	public $html_id='';
+	
 	/**
 	 * return "<form action='...' method='get'  ....>" 
 	 * 
-	 * @param type $url
-	 * @param string $id
-	 * @param string $method [get post upload]
-	 * @param string $other "style='xxx' onsubmit='xxx'"
+	 * @param string $otherAttr "style='xxx' onsubmit='xxx'"
 	 * @return string 
 	 */
-	public static function renderFormTag($url,$id=null,$method=null,$other=null)
+	public function renderFormTag($otherAttr=null)
 	{
-		$str = "<form action=\"$url\"".(empty($id)?'':" id=\"$id\"");
-		$method=  strtolower($method);
-		if($method=='get'||$method=='post'){
-			$str.=" method=\"$method\"";
-		}elseif($method=='upload'){
-			$str.=" method=\"post\" enctype=\"multipart/form-data\"";
+		$str = $this->getRenderer()->htmlFormTag($this);
+		if(!empty($otherAttr)){
+			return substr($str,0,-1).' '.$otherAttr.'>';
 		}else{
-			$str.=" method=\"get\"";
+			return $str;
 		}
-		if($other!==null){
-			$str.=" $other";
-		}
-		return $str.">";
 	}
-	
+	/**
+	 * @return Renderer
+	 */
+	protected function getRenderer()
+	{
+		if(empty($this->renderer)){
+			$this->renderer = new Renderer();
+		}
+		return $this->renderer;
+	}
+	/**
+	 * 
+	 * @param Renderer $renderer
+	 */
+	public function setRenderer($renderer)
+	{
+		$this->renderer=$renderer;
+	}
+	/**
+	 *
+	 * @var Renderer 
+	 */
+	protected $renderer;
 	/**
 	 * return "<input type=submit|reset|button value=title .....>"
 	 * @param string $title title-displayed
@@ -42,10 +60,7 @@ class Base {
 	 */
 	public static function renderFormButton($title,$type="submit",$other=null)
 	{
-		$type=  strtolower($type);
-		if($type=='button'||$type=='reset'||$type='submit'){
-			return "<input type=\"$type\" value=\"$title\" $other>";
-		}else throw new \ErrorException('button type error:'.$type);
+		$this->getRenderer()->htmlFormButton($title, $type, $other);
 	}
 		
 	
@@ -53,24 +68,48 @@ class Base {
 	/**
 	 * 
 	 * @param string $id
-	 * @param string $cruds  c(create) r(read) u(update) d(delete) s(search)
-	 * @return \Sooh\DWZ\Form
+	 * @return \Sooh\Base\Form\Broker
 	 */	
-	public static function getCopy($id='default',$cruds='c')
+	public static function getCopy($id='default')
 	{
 		if(!isset(self::$_copy[$id])){
 			$nm = get_called_class();
 			self::$_copy[$id] = new $nm();
 			self::$_copy[$id]->guid=$id;
-			self::$_copy[$id]->crudType=$cruds;
 		}
 		return self::$_copy[$id];
 	}
+	/**
+	 * 
+	 * @param type $url
+	 * @param type $method
+	 * @param string $cruds  c(create) r(read) u(update) d(delete) s(search)
+	 * @param type $html_id
+	 * 
+	 * @return \Sooh\Base\Form\Broker
+	 */
+	public function init($url,$method='get',$cruds=self::type_s,$html_id='')
+	{
+		$this->url      = $url;
+		$this->method   = $method;
+		$this->html_id  = $html_id;
+		$this->crudType = $cruds;
+		return $this;
+	}
+	/**
+	 * 
+	 * @param string $k
+	 * @param \Sooh\Base\Form\Item $item
+	 * @return \Sooh\Base\Form\Broker
+	 */
+	public function addItem($k,$item)
+	{
+		$this->items[$k]=$item;
+		return $this;
+	}
+	
 	protected $guid;
-
-	public $items=array(
-		
-	);
+	public $items=array();
 	protected $methods=array(
 		'_eq'=>'=',	'_ne'=>'!',
 		'_gt'=>'>',	'_g2'=>']',
@@ -95,11 +134,15 @@ class Base {
 				if(!is_a($_ignore_,'\Sooh\Base\Form\Item')){
 					$this->values[$k]=$inputVal;
 				}else{
-					if($_ignore_->input()==\Sooh\Base\Form\Item::constval)$this->values[$k]=$_ignore_->value;
-					else {
+					if($_ignore_->input()==\Sooh\Base\Form\Item::constval){
+						$this->values[$k]=$_ignore_->value;
+					}else {
 						$err = $_ignore_->checkUserInput($inputVal,$_ignore_->capt,$errClassName);
-						if($err===null)$this->values[$k]=$inputVal;
-						else return $err;
+						if($err===null){
+							$this->values[$k]=$inputVal;
+						}else{
+							return $err;
+						}
 					}
 				}
 			}
@@ -118,7 +161,16 @@ class Base {
 	{
 		return $this->items[$k];
 	}
+	/**
+	 * 
+	 * @deprecated since version 0
+	 */
 	public function cruds()
+	{
+		error_log('cruds is deprecated,use type instead');
+		return $this->crudType;
+	}
+	public function type()
 	{
 		return $this->crudType;
 	}
@@ -131,7 +183,9 @@ class Base {
 	{
 		$tmp=array();
 		foreach($this->values as $k=>$v){
-			if($k['0']!=='_' && !in_array($k, $keyExclude))$tmp[$k]=$v;
+			if($k['0']!=='_' && !in_array($k, $keyExclude)){
+				$tmp[$k]=$v;
+			}
 		}
 		return $tmp;
 	}
@@ -145,14 +199,19 @@ class Base {
 		$where=array();
 		if($this->flgIsThisForm){
 			foreach($this->values as $k=>$v){
-				if($v==='')continue;
+				if($v===''){
+					continue;
+				}
 				if($k[0]=='_'){
 					if($k[1]!=='_'){
 						$cmp=substr($k,-3);
 						$k = substr($k,1,-3);
 						if(isset($this->methods[$cmp])){
-							if($cmp=='_lk')$where[$k.$this->methods[$cmp]]='%'.$v.'%';
-							else $where[$k.$this->methods[$cmp]]=$v;
+							if($cmp=='_lk'){
+								$where[$k.$this->methods[$cmp]]='%'.$v.'%';
+							}else{
+								$where[$k.$this->methods[$cmp]]=$v;
+							}
 						}
 					}
 				}
@@ -163,8 +222,11 @@ class Base {
 						$cmp=substr($k,-3);
 						$k = substr($k,1,-3);
 						if(isset($this->methods[$cmp])){
-							if($cmp=='_lk')$where[$k.$this->methods[$cmp]]='%'.$_ignore_.'%';
-							else $where[$k.$this->methods[$cmp]]=$_ignore_;
+							if($cmp=='_lk'){
+								$where[$k.$this->methods[$cmp]]='%'.$_ignore_.'%';
+							}else{
+								$where[$k.$this->methods[$cmp]]=$_ignore_;
+							}
 						}
 					}
 				}
@@ -175,8 +237,11 @@ class Base {
 					$cmp=substr($k,-3);
 					$k = substr($k,1,-3);
 					if(isset($this->methods[$cmp])){
-						if(is_scalar($_ignore_) || $_ignore_===null)$where[$k.$this->methods[$cmp]]=$_ignore_;
-						else $where[$k.$this->methods[$cmp]]=$_ignore_->value;
+						if(is_scalar($_ignore_) || $_ignore_===null){
+							$where[$k.$this->methods[$cmp]]=$_ignore_;
+						}else{
+							$where[$k.$this->methods[$cmp]]=$_ignore_->value;
+						}
 					}
 				}
 			}
@@ -187,25 +252,15 @@ class Base {
 	{
 		return $this->values;
 	}
-	protected $crudType='c';
+	protected $crudType=self::type_s;
 	/**
 	 * 
 	 * @param char $type [c|r|u|d]
 	 * @return \Sooh\Base\Form\Base
 	 */
-	public function switchCRUD($type)
+	public function switchType($type)
 	{
-		switch ($type){
-			case 'c'://create
-			case 'r'://read
-			case 'u'://update
-			case 'd'://delete
-			case 's'://search
-				$this->crudType=$type;
-				break;
-			default:
-				throw new \ErrorException('invalid crud type');
-		}
+		$this->crudType=$type;
 		return $this;
 	}
 
@@ -236,9 +291,17 @@ class Base {
 			}
 			else{
 				$inputType = $_ignore_->input($this->crudType);
-				if(is_array($inputType))$input = call_user_func($inputType, $k, $_ignore_);
-				elseif($tpl===null || $inputType===\Sooh\Base\Form\Item::hidden)return '<input type=hidden id="'.$k.'" name="'.$k.'" value="'.htmlspecialchars($this->valForInput($_ignore_->value, $k)).'">';
-				else $input = $this->buildInput($k, $_ignore_, $inputType);
+				if(is_array($inputType)){
+					$input = call_user_func($inputType, $k, $_ignore_);
+				}elseif($tpl===null || $inputType===\Sooh\Base\Form\Item::hidden){
+					return '<input type=hidden id="'.$k.'" name="'.$k.'" value="'.htmlspecialchars($this->valForInput($_ignore_->value, $k)).'">';
+				}else{
+					if($_ignore_->options){
+						$_ignore_->options->getPair($this->values,$this->crudType==self::type_s);
+					}
+					$_ignore_->valForInput=$this->valForInput($_ignore_->value,$k);
+					$input = $this->getRenderer()->render($k, $_ignore_, $inputType);
+				}
 			}
 			return str_replace(array('{capt}','{input}'), array($_ignore_->capt,$input), $tpl);
 		}
@@ -276,71 +339,12 @@ class Base {
 	}
 	protected function valForInput($valDefined,$keyInput)
 	{
-		if(isset($this->values[$keyInput]))$ret= $this->values[$keyInput];
-		else $ret= $valDefined;
+		if(isset($this->values[$keyInput])){
+			$ret= $this->values[$keyInput];
+		}else{
+			$ret= $valDefined;
+		}
 		return $ret;
 	}
-	/**
-	 * 构建input
-	 * @param string $k
-	 * @param \Sooh\Base\Form\Item $define
-	 * @param string $inputType
-	 */
-	protected function buildInput($k,$define,$inputType)
-	{
-		$val4Input=$this->valForInput($define->value,$k);
-		switch ($inputType){
-			case sooh_formdef::text:
-				return '<input id="'.$k.'" type=text name="'.$k.'" value="'.$val4Input.'">';
-			case sooh_formdef::passwd:
-				return '<input id="'.$k.'" type=password name="'.$k.'" value="'.$val4Input.'">';
-			case sooh_formdef::constval:
-				if($define->options){
-					$options = $define->options->getPair($this->values,$this->crudType=='s');
-					return  $options[$val4Input].'<input type=hidden name="'.$k.'" value="'.$val4Input.'">';
-				}else return  $val4Input.'<input type=hidden name="'.$k.'" value="'.$val4Input.'">';
-			case sooh_formdef::select:
-				$str = '<select id="'.$k.'" name="'.$k.'">';
-				$options = $define->options->getPair($this->values,$this->crudType=='s');
-				$found=false;
-				foreach($options as $k=>$v){
-					if($val4Input==$k)	{$str.= '<option value="'.$k.'"  selected>'.$v.'</option>';$found=true;}
-					else $str.= '<option value="'.$k.'">'.$v.'</option>';
-				}
-				if(!$found){
-					throw new \ErrorException($val4Input.' not found in options');
-				}
-				return $str.'</select>';
-			case sooh_formdef::date:
-				return '<input id="'.$k.'" type=text name="'.$k.'" value="'.$val4Input.'">';
-			case sooh_formdef::mulit:
-				return '<textarea id="'.$k.'" name="'.$k.'">'.$val4Input.'</textarea>';
-			case sooh_formdef::chkbox:
-				$str='';
-				$options = $define->options->getPair($this->values,$this->crudType=='s');
-				$values = explode(',', $val4Input);
-				foreach($options as $i=>$v){
-					if(in_array($i, $values)){
-						$str.='<label><input type="checkbox" name="'.$k.'[]" value="'.$i.'" checked=true/>'.$v.'</label>';
-					}else{
-						$str.='<label><input type="checkbox" name="'.$k.'[]" value="'.$i.'" />'.$v.'</label>';
-					}
-				}
-				return $str;
-			case sooh_formdef::radio:
-				$str='';
-				$options = $define->options->getPair($this->values,$this->crudType=='s');
-				$values = explode(',', $val4Input);
-				foreach($options as $i=>$v){
-					if(in_array($i, $values)){
-						$str.='<label><input type="radio" name="'.$k.'" value="'.$i.'" checked=true/>'.$v.'</label>';
-					}else{
-						$str.='<label><input type="radio" name="'.$k.'" value="'.$i.'" />'.$v.'</label>';
-					}
-				}
-				return $str;
-			default:
-				throw new \ErrorException("unknown input type:".var_export($inputType,true));
-		}
-	}
+	
 }

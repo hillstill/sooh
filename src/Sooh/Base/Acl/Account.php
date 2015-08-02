@@ -56,15 +56,28 @@ class Account {
 	protected $rpc=null;
 	/**
 	 *
-	 * @var \Prj\Data\Account;
+	 * @var \Sooh\DB\Base\KVObj;
 	 */
 	protected $account=null;
 	protected function setAccountStorage($accountname, $camefrom)
 	{
-		\Sooh\DB\Cases\AccountStorage::$__nSplitedBy=2;
-		\Sooh\DB\Cases\AccountStorage::$__id_in_dbByObj='default';
 		$this->account = \Sooh\DB\Cases\AccountStorage::getCopy($accountname, $camefrom);
 	}
+	/**
+	 * 获取符合条件的账号的数量
+	 * @param array $where
+	 * @return int
+	 */
+	public function getAccountNum($where)
+	{
+		if($this->rpc!==null){
+			return $this->rpc->initArgs(array('where'=>$where,))->send(__FUNCTION__);
+		}else{
+			$this->setAccountStorage('', 'local');
+			return \Sooh\DB\Cases\AccountStorage::loopGetRecordsCount($where);
+		}
+	}
+	
 	/**
 	 * 账号登入, 失败抛出异常(密码错误，账号找不到等等)
 	 * @param string $accountname
@@ -159,7 +172,7 @@ class Account {
 			if($this->account->exists()){
 				throw new \Sooh\Base\ErrException(self::errAccountExists,400);
 			}else{
-				$this->account->setField('passwd_salt',substr(uniqid(),0,4));
+				$this->account->setField('passwd_salt',substr(uniqid(),-4));
 				$cmp = md5($password.$this->account->getField('passwd_salt'));
 				$this->account->setField('passwd',$cmp);
 				$this->account->setField('camefrom',$camefrom);
@@ -191,5 +204,14 @@ class Account {
 			}
 		}
 	}
-
+	
+	public function accountsNum()
+	{
+		if($this->rpc!==null){
+			return $this->rpc->initArgs(array())->send(__FUNCTION__);
+		}else{
+			$this->setAccountStorage($accountname, $camefrom);
+			$this->account->load();
+		}
+	}
 }

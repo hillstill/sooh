@@ -65,11 +65,16 @@ class Options {
 					}
 				}
 				$r = \Sooh\DB\Broker::getInstance($this->setting[1])->getPair($this->setting[2], $this->setting[3], $this->setting[4],$where);
-			}else throw new \ErrorException('unknown getPairMethod');
-		}else $r = $this->arr;
+			}else {
+				throw new \ErrorException('unknown getPairMethod');
+			}
+		}else{
+			$r = $this->arr;
+		}
 		if($showEmpty && $this->captForEmpty){
 			$r['']=$this->captForEmpty;
 		}
-		return $r;
+		$this->pairVals = $r;
 	}
+	public $pairVals;
 }

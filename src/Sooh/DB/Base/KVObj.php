@@ -21,8 +21,6 @@ abstract class KVObj
 	const onAfterLoaded='onAfterLoad';
 	const onBeforeSave ='onBeforeSave';
 	const onAfterSave = 'onAfterSave';
-	public static $__id_in_dbByObj='default';
-	public static $__nSplitedBy=1;
 	protected $fieldName_verid='iRecordVerID';
 	protected $fieldName_lockmsg='sLockData';//建议100字节长的字符串(默认'')，54个字节的基本长度，剩下的给lock的说明
 	protected $listener=array();
@@ -34,23 +32,23 @@ abstract class KVObj
 	protected $cacheWhenVerIDIs=0;
 	protected static $_copies=array();
 	
-	public static function searchAll($fields,$where,$tableByPkey=null)
-	{
-		if($tableByPkey!==null){
-			if(is_numeric($tableByPkey)){
-				$id = $tableByPkey%static::numToSplit();
-			}else{
-				$id = static::indexForSplit($tableByPkey)%static::numToSplit();
-			}
-			$tbFullName = null;
-			$db = static::getDBAndTbName($tbFullName,$id,null);
-		}else{
-			$max = static::numToSplit();
-			for($id=0;$id<$max;$id++){
-				$db = static::getDBAndTbName($tbFullName,$id,null);
-			}
-		}
-	}
+//	public static function searchAll($fields,$where,$tableByPkey=null)
+//	{
+//		if($tableByPkey!==null){
+//			if(is_numeric($tableByPkey)){
+//				$id = $tableByPkey%static::numToSplit();
+//			}else{
+//				$id = static::indexForSplit($tableByPkey)%static::numToSplit();
+//			}
+//			$tbFullName = null;
+//			$db = static::getDBAndTbName($tbFullName,$id,null);
+//		}else{
+//			$max = static::numToSplit();
+//			for($id=0;$id<$max;$id++){
+//				$db = static::getDBAndTbName($tbFullName,$id,null);
+//			}
+//		}
+//	}
 
 	/**
 	 * @param array $pkey
@@ -110,7 +108,9 @@ abstract class KVObj
 					unset($rs[$k]);
 					unset(self::$_copies[$class][$k]);
 				}
-				if(!empty(self::$_copies[$class]))unset(self::$_copies[$class]);
+				if(!empty(self::$_copies[$class])){
+					unset(self::$_copies[$class]);
+				}
 			}
 		}
 		
@@ -161,7 +161,7 @@ abstract class KVObj
 	 * 拆分成几个表
 	 * @return int
 	 */
-	protected static function numToSplit(){return static::$__nSplitedBy;}
+	protected static function numToSplit(){return 1;}
 	/**
 	 * 根据拆分id，确认实际的表名
 	 * @param int $n
@@ -193,7 +193,7 @@ abstract class KVObj
 	protected static $tmpId=0;
 	protected static function idFor_dbByObj_InConf($isCache)
 	{
-		return static::$__id_in_dbByObj.($isCache?'Cache':'');
+		return 'default';
 	}
 	protected static function getDBAndTbNameById(&$tbnameToSet,$splitedId,$isCache=false)
 	{
@@ -215,6 +215,7 @@ abstract class KVObj
 		}
 		$conf = $ini->get($confIDStr);
 		if(empty($conf)){
+			error_log('try find '.$confIDStr.' in dbConf failed for '. $dbByObj);
 			return null;
 		}
 		
@@ -352,17 +353,35 @@ abstract class KVObj
 	 * 
 	 * @param \Sooh\DB\Interfaces\All $where
 	 */
-	public function loopGetRecordsCount($arrWhere,$_ignore_=null)
+	public static function loopGetRecordsCount($arrWhere,$_ignore_=null)
 	{
 		if(!is_array($arrWhere)){
-			$this->tmpVar['counts']+=$arrWhere->getRecordCount($_ignore_,$this->tmpVar['where']);
+			static::$tmpVar['counts']+=$arrWhere->getRecordCount($_ignore_,static::$tmpVar['where']);
 		}else{
-			$this->tmpVar = array('where'=>$arrWhere);
-			self::loop(array($this,__FUNCTION__));
-			return $this->tmpVar['counts'];
+			static::$tmpVar = array('where'=>$arrWhere);
+			$func = get_called_class().'::'.__FUNCTION__;
+			self::loop($func);
+			return static::$tmpVar['counts'];
 		}
 	}
-	protected $tmpVar;
+	protected static $tmpVar;
+	/**
+	 * 符合条件的记录
+	 * (注，函数复用了，loop回调的还是这个函数，此时arrWhere是db,$_ignore_是 tbName
+	 * 
+	 * @param \Sooh\DB\Interfaces\All $where
+	 */
+	public static function loopFindRecords($arrWhere,$_ignore_=null)
+	{
+		if(!is_array($arrWhere)){
+			static::$tmpVar['rs'] = array_merge(static::$tmpVar['rs'],$arrWhere->getRecords($_ignore_,'*',static::$tmpVar['where']));
+		}else{
+			static::$tmpVar = array('where'=>$arrWhere,'rs'=>array());
+			$func = get_called_class().'::'.__FUNCTION__;
+			self::loop($func);
+			return static::$tmpVar['rs'];
+		}
+	}
 	/**
 	 * 分表后，查询结果分页很复杂，提供这个函数解决部分情况：
 	 * a)以唯一索引（1个或2个字段，更多的暂不支持：2项效率高些，代码也好写，呵呵）作为排序条件，可以完美实现分页
@@ -376,10 +395,10 @@ abstract class KVObj
 	 * @param \Sooh\DB\Pager $pager 
 	 * @return array (lastPage=>array(), records=array())
 	 */
-	public function loopGetRecordsPage($sort_field_type,$lastPage,$pager=null)
+	public static function loopGetRecordsPage($sort_field_type,$lastPage,$pager=null)
 	{
 		if($pager===null){//loop callback
-			$this->loopGetRecordsPage_getRecords($sort_field_type, $lastPage);
+			static::loopGetRecordsPage_getRecords($sort_field_type, $lastPage);
 		}else{
 			
 			//lastPage: ['_pageid_'=>0,'_autoid_'=>array(from,to),'_subkey_'=>array(from,to), 此函数返回值中lastPage
@@ -399,7 +418,7 @@ abstract class KVObj
 				foreach($sort_field_type as $field=>$type){
 					$strSort.="$type $field ";
 				}
-				return $this->loopGetRecordsPage_oneStep($sort_field_type, $lastPage, $pager,$pageForward,$strSort);
+				return static::loopGetRecordsPage_oneStep($sort_field_type, $lastPage, $pager,$pageForward,$strSort);
 			}elseif($pager->page_id_zeroBegin>$pageIdOld){//正向翻页
 				//echo "-------------------------forward from $pageIdOld to {$pager->page_id_zeroBegin}--------\n";
 //				var_dump($lastPage);
@@ -412,7 +431,7 @@ abstract class KVObj
 				$pager->init($pager->total, $pager->pageid()+$pageIdOld-$pager->page_id_zeroBegin);
 				for($i=0;$i<$steps;$i++){
 					$pager->init($pager->total, $pager->pageid()+1);
-					$ret = $this->loopGetRecordsPage_oneStep($sort_field_type, $lastPage, $pager,$pageForward,$strSort);
+					$ret = static::loopGetRecordsPage_oneStep($sort_field_type, $lastPage, $pager,$pageForward,$strSort);
 					$lastPage = $ret['lastPage'];
 				}
 				return $ret;
@@ -428,7 +447,7 @@ abstract class KVObj
 				$pager->init($pager->total, $pager->pageid()+$pageIdOld-$pager->page_id_zeroBegin);
 				for($i=0;$i<$steps;$i++){
 					$pager->init($pager->total, $pager->pageid()-1);
-					$ret = $this->loopGetRecordsPage_oneStep($sort_field_type, $lastPage, $pager,$pageForward,$strSort);
+					$ret = static::loopGetRecordsPage_oneStep($sort_field_type, $lastPage, $pager,$pageForward,$strSort);
 					$lastPage = $ret['lastPage'];
 				}
 				return $ret;
@@ -442,14 +461,15 @@ abstract class KVObj
 	 * @param \Sooh\DB\Pager $pager 额外的where条件
 	 * @return array (lastPage=>array(), records=array())
 	 */	
-	protected function loopGetRecordsPage_oneStep($sort_field_type,$lastPage,$pager,$pageForward,$strSort)
+	protected static function loopGetRecordsPage_oneStep($sort_field_type,$lastPage,$pager,$pageForward,$strSort)
 	{
 		//lastPage: ['_pageid_'=>0,'_autoid_'=>array(from,to),'_subkey_'=>array(from,to), 此函数返回值中lastPage
 		//			'unique'=>1(默认),'fieldSearch1'=>'val','fieldSearch2'=>'val',] 当前 搜索表单条件
-		$where = $this->loopGetRecordsPage_buildWhere($sort_field_type, $lastPage,$pageForward);
-		$this->tmpVar = array('where'=>$where,'sort'=>$strSort,'pagesize'=>$pager->page_size);
-		self::loop(array($this,'loopGetRecordsPage'));
-		$records = $this->loopGetRecordsPage_sortGetPage($sort_field_type,$pageForward);
+		$where = static::loopGetRecordsPage_buildWhere($sort_field_type, $lastPage,$pageForward);
+		static::$tmpVar = array('where'=>$where,'sort'=>$strSort,'pagesize'=>$pager->page_size);
+		$func = get_called_class().'::loopGetRecordsPage';
+		self::loop($func);
+		$records = static::loopGetRecordsPage_sortGetPage($sort_field_type,$pageForward);
 
 		$news = array();
 		$news['_pageid_'] =$pager->page_id_zeroBegin;
@@ -494,7 +514,7 @@ abstract class KVObj
 				//echo ">>1>>".json_encode($w)."\n";
 			}
 			if(is_array($lastPage['where'])){
-				$w = $this->loopGetRecordsPage_mergeWhere($w,$lastPage['where']);
+				$w = static::loopGetRecordsPage_mergeWhere($w,$lastPage['where']);
 				//echo ">>2>>".json_encode($w)."\n";
 			}
 			//echo ">>3>>".json_encode($w)."\n";
@@ -513,8 +533,8 @@ abstract class KVObj
 				
 				$wCmp[$k1.$sortMethod[$pageForward][$sort1]]=$lastPage['_last_']['_'.$k1.'_'][$pageForward];
 				if(is_array($lastPage['where'])){
-					$wEq = $this->loopGetRecordsPage_mergeWhere($wEq,$lastPage['where']);
-					$wCmp = $this->loopGetRecordsPage_mergeWhere($wCmp,$lastPage['where']);
+					$wEq = static::loopGetRecordsPage_mergeWhere($wEq,$lastPage['where']);
+					$wCmp = static::loopGetRecordsPage_mergeWhere($wCmp,$lastPage['where']);
 				}
 				$where[]=$wEq;
 				$where[]=$wCmp;
@@ -566,7 +586,7 @@ abstract class KVObj
 			case 1:
 				$tmp=array();
 				$k = key($sortField_sortType);
-				foreach($this->tmpVar['rs'] as $rs){
+				foreach(static::$tmpVar['rs'] as $rs){
 					foreach($rs as $r){
 						$tmp[ $r[ $k ] ][] = $r;
 					}
@@ -583,7 +603,7 @@ abstract class KVObj
 			case 2:
 				$tmp=array();
 				$sort_key=  array_keys($sortField_sortType);
-				foreach($this->tmpVar['rs'] as $rs){
+				foreach(static::$tmpVar['rs'] as $rs){
 					foreach($rs as $r){
 						$tmp[ $r[ $sort_key[0] ] ][ $r[ $sort_key[1] ] ] = $r;
 					}
@@ -612,11 +632,11 @@ abstract class KVObj
 				throw new \ErrorException('sort field needs to be 1-2, given:'.  json_encode($sortField_sortType));
 		}
 		if($pageForward){
-			while(sizeof($all)>$this->tmpVar['pagesize']){
+			while(sizeof($all)>static::$tmpVar['pagesize']){
 				array_pop ($all);
 			}
 		}else{
-			while(sizeof($all)>$this->tmpVar['pagesize']){
+			while(sizeof($all)>static::$tmpVar['pagesize']){
 				array_shift ($all);
 			}
 		}
@@ -630,8 +650,8 @@ abstract class KVObj
 	protected function loopGetRecordsPage_getRecords($db,$tb)
 	{
 		
-		foreach($this->tmpVar['where'] as $realWhere){
-			$this->tmpVar['rs'][] = $db->getRecords($tb,'*',$realWhere,$this->tmpVar['sort'],$this->tmpVar['pagesize']);
+		foreach(static::$tmpVar['where'] as $realWhere){
+			static::$tmpVar['rs'][] = $db->getRecords($tb,'*',$realWhere,static::$tmpVar['sort'],static::$tmpVar['pagesize']);
 		}
 	}
 	protected $fieldsDatetime=array();
@@ -724,6 +744,7 @@ abstract class KVObj
 											."\n check code of load(cur loaded:"
 													.(is_array($this->r)?implode(',',array_keys($this->r)):"NULL")
 											.")\npkey=". json_encode($this->pkey));
+				error_log($err->getMessage()."\n".$err->getTraceAsString());
 				throw $err;
 			}else{
 				return null;

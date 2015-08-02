@@ -6,6 +6,10 @@ namespace Sooh\DB\Cases;
  * @author Simon Wang <hillstill_simon@163.com>
  */
 class SessionStorage extends \Sooh\DB\Base\KVObj{
+	public static $__id_in_dbByObj='default';
+	public static $__nSplitedBy=1;
+	protected static function idFor_dbByObj_InConf($isCache){	return self::$__id_in_dbByObj;}
+	protected static function numToSplit(){return static::$__nSplitedBy;}
 	//针对缓存，非缓存情况下具体的表的名字
 	protected static function splitedTbName($n,$isCache)
 	{

@@ -17,7 +17,7 @@ class Item {
 	const hidden= 'hidden';
 	const constval= 'const';
 	const date = 'date';
-	
+	public $valForInput;
 	public $capt;
 	public $value;
 	/**
@@ -60,10 +60,13 @@ class Item {
 	 * @param array $record
 	 * @return string
 	 */
-	public function input($crud='c')
+	public function input($crud=\Sooh\Base\Form\Broker::type_u)
 	{
-		if(!empty($this->inputWhenUpdate) && $crud==='u')return $this->inputWhenUpdate;
-		else return $this->inputDefault;
+		if(!empty($this->inputWhenUpdate) && $crud===\Sooh\Base\Form\Broker::type_u){
+			return $this->inputWhenUpdate;
+		}else{
+			return $this->inputDefault;
+		}
 	}
 	public $verify=null;
 	/**
@@ -87,18 +90,25 @@ class Item {
 	 */
 	public function checkUserInput($inputVal,$capt,$errClassName=null)
 	{
-		if($errClassName==null)$errClassName = '\Sooh\Base\Form\Error';
-		$errClassName .= ':factory';
+		if($errClassName==null){
+			$errClassName = '\Sooh\Base\Form\Error';
+		}
+		$errClassName .= '::factory';
 		if(!empty($this->verify)){
-			if($this->verify['required'] && ($inputVal===null || $inputVal==='' ))return $errClassName($capt,form_err::REQUIRED);
-			else{
+			if($this->verify['required'] && ($inputVal===null || $inputVal==='' )){
+				return $errClassName($capt,form_err::REQUIRED);
+			}else{
 				switch ($this->verify['type']){
 					case 'int':
-						if($inputVal<$this->verify['min'] || $inputVal>$this->verify['max'])return $errClassName($capt,form_err::INT_OVERFLOW,form_err::factoryParam($this->verify['min'], $this->verify['max']));
+						if($inputVal<$this->verify['min'] || $inputVal>$this->verify['max{']){
+							return $errClassName($capt,form_err::INT_OVERFLOW,form_err::factoryParam($this->verify['min'], $this->verify['max']));
+						}
 						break;
 					case 'str':
 						$inputVal = strlen($inputVal);
-						if($inputVal<$this->verify['min'] || $inputVal>$this->verify['max'])return $errClassName($capt,form_err::STR_LENGTH,form_err::factoryParam($this->verify['min'], $this->verify['max']));
+						if($inputVal<$this->verify['min'] || $inputVal>$this->verify['max']){
+							return $errClassName($capt,form_err::STR_LENGTH,form_err::factoryParam($this->verify['min'], $this->verify['max']));
+						}
 						break;
 				}
 			}

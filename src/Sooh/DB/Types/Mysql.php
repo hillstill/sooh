@@ -78,7 +78,7 @@ class Mysql implements \Sooh\DB\Interfaces\All
 	 */
 	private $_lastCmd=null;
 	private $_connection=null;
-	public $dbClassGUId;
+	public $dbConf;
 	public function __construct($conf) 
 	{
 		$this->_connection = $conf;

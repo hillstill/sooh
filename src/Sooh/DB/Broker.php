@@ -62,7 +62,7 @@ class Broker {
 //			if (!class_exists($class, false))
 //				include __DIR__ . '/' . $class . '.php';
 			self::$_instances[$id] =  new $class($conf);
-			self::$_instances[$id]->dbClassGUId=$id;
+			self::$_instances[$id]->dbConf=$conf;
 			if(sooh_trace::needsWrite(__CLASS__))sooh_trace::str('create new connection['.$id.'] of '.  json_encode($conf));
 		}else{
 			if(sooh_trace::needsWrite(__CLASS__))sooh_trace::str('exists connection['.$id.'] of '.  json_encode($conf));
