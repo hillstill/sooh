@@ -34,6 +34,7 @@ class Account {
 	const errAccountLock='account_locked';
 	const errRetryLater='server_busy_retry_later';
 	const errPasswdLock='password_failed_too_many_times';
+	const errPasswdFailed='reset_password_failed';
 	protected static $_instance=null;
 	/**
 	 * 
@@ -56,7 +57,7 @@ class Account {
 	protected $rpc=null;
 	/**
 	 *
-	 * @var \Sooh\DB\Base\KVObj;
+	 * @var \Sooh\DB\Cases\AccountStorage;
 	 */
 	protected $account=null;
 	protected function setAccountStorage($accountname, $camefrom)
@@ -77,7 +78,29 @@ class Account {
 			return \Sooh\DB\Cases\AccountStorage::loopGetRecordsCount($where);
 		}
 	}
-	
+	/**
+	 * 修改密码
+	 * @param string $accountname
+	 * @param string $password
+	 * @param string $camefrom
+	 * @param array $customArgs 附带修改什么
+	 * @return error-message
+	 */
+	public function resetPWD($accountname,$password,$camefrom='local',$customArgs=array())
+	{
+		if($this->rpc!==null){
+			return $this->rpc->initArgs(array('accountname'=>$accountname,'password'=>$password,'camefrom'=>$camefrom))->send(__FUNCTION__);
+		}else{
+			$this->setAccountStorage($accountname, $camefrom);
+			$this->account->load();
+			$ret = $this->account->resetPWD($password, $customArgs);
+			if($ret){
+				return '';
+			}else{
+				return self::errPasswdFailed;
+			}
+		}
+	}	
 	/**
 	 * 账号登入, 失败抛出异常(密码错误，账号找不到等等)
 	 * @param string $accountname
@@ -93,7 +116,7 @@ class Account {
 		}else{
 			$this->setAccountStorage($accountname, $camefrom);
 			$this->account->load();
-			$ret = $this->account->exists();
+//			$ret = $this->account->exists();
 			if($this->account->exists()){
 				$dt = \Sooh\Base\Time::getInstance();
 				$cmp = md5($password.$this->account->getField('passwd_salt'));
@@ -108,7 +131,7 @@ class Account {
 				}
 				$ymdhForbidden = $this->account->getField('dtForbidden');
 				if($ymdhForbidden){
-					if($dt->timestamp() <= $ymdhForbidden){
+					if($dt->YmdH <= $ymdhForbidden){
 						throw new \Sooh\Base\ErrException(self::errAccountLock,404);
 					}
 				}
@@ -205,13 +228,4 @@ class Account {
 		}
 	}
 	
-	public function accountsNum()
-	{
-		if($this->rpc!==null){
-			return $this->rpc->initArgs(array())->send(__FUNCTION__);
-		}else{
-			$this->setAccountStorage($accountname, $camefrom);
-			$this->account->load();
-		}
-	}
 }

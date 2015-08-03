@@ -21,4 +21,27 @@ class AccountStorage extends \Sooh\DB\Base\KVObj{
 	{
 		return parent::getCopy(array('camefrom'=>$camefrom,'loginname'=>$account));
 	}
+	/**
+	 * 修改密码
+	 * @param string $accountname
+	 * @param string $password
+	 * @param string $camefrom
+	 * @param array $customArgs 附带修改什么
+	 * @return boolean
+	 */
+	public function resetPWD($password,$customArgs=array())
+	{
+		$cmp = md5($password.$this->getField('passwd_salt'));
+		$this->setField('passwd', $cmp);
+		foreach($customArgs as $k=>$v){
+			$this->setField($k, $v);
+		}
+		try{
+			$this->update();
+			return true;
+		} catch (\ErrorException $ex) {
+			error_log($ex->getMessage()."\n".$ex->getTraceAsString());
+			return false;
+		}
+	}
 }
