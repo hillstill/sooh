@@ -9,6 +9,7 @@ use Sooh\Base\Form\Error as form_err;
  */
 class Item {
 	const text = 'text';
+	const datepicker = 'datepicker';
 	const mulit= 'textarea';
 	const passwd= 'password';
 	const chkbox='checkbox';

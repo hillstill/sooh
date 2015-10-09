@@ -23,7 +23,7 @@ class Broker {
 	{
 		$str = $this->getRenderer()->htmlFormTag($this);
 		if(!empty($otherAttr)){
-			return substr($str,0,-1).' '.$otherAttr.'>';
+			return "<form $otherAttr ".substr($str,5);
 		}else{
 			return $str;
 		}
@@ -52,17 +52,16 @@ class Broker {
 	 */
 	protected $renderer;
 	/**
-	 * return "<input type=submit|reset|button value=title .....>"
+	 * 
 	 * @param string $title title-displayed
-	 * @param string $type  [submit reset button]
-	 * @param string $other
+	 * @param string $tpl default:<tr><td>{btn}</td></tr>
 	 * @return string
 	 */
-	public static function renderFormButton($title,$type="submit",$other=null)
+	public function renderSubmit($title,$tpl='<tr><td>{btn}</td></tr>')
 	{
-		$this->getRenderer()->htmlFormButton($title, $type, $other);
+		$btn = $this->getRenderer()->htmlFormButton($title, 'submit');
+		return str_replace('{btn}', $btn, $tpl);
 	}
-		
 	
 	protected static $_copy=array();
 	/**
@@ -124,8 +123,11 @@ class Broker {
 	 * @param \Sooh\Base\Form\Item $_ignore_
 	 * @return \Sooh\Base\Form\Error
 	 */
-	public function fillValues($request,$errClassName=null,$_ignore_=null)
+	public function fillValues($request=null,$errClassName=null,$_ignore_=null)
 	{
+		if(empty($request)){
+			$request = array_merge($_GET,$_POST);
+		}
 		$this->flgIsThisForm=isset($request['__formguid__'])?$request['__formguid__']:null;
 		$this->flgIsThisForm = $this->flgIsThisForm===$this->guid;
 		foreach($this->items as $k=>$_ignore_){
@@ -148,6 +150,10 @@ class Broker {
 			}
 		}
 		return null;
+	}
+	public function isThisFormSubmited()
+	{
+		return $this->flgIsThisForm;
 	}
 	public $flgIsThisForm=false;
 	protected $values=array();
@@ -250,6 +256,7 @@ class Broker {
 	}
 	public function toArray()
 	{
+		
 		return $this->values;
 	}
 	protected $crudType=self::type_s;
@@ -271,7 +278,7 @@ class Broker {
 	 * @param \Sooh\Base\Form\Item $_ignore_
 	 * @return string
 	 */
-	public function renderDefault($tpl,$k=null,$_ignore_=null)
+	public function renderDefault($tpl='<tr><td>{capt}</td><td>{input}</td></tr>',$k=null,$_ignore_=null)
 	{
 		if($k===null){
 			$str='<input type=hidden name=__formguid__ value='.$this->guid.'>';

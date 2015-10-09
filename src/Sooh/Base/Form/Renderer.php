@@ -19,6 +19,8 @@ class Renderer
 		switch ($inputType){
 			case sooh_formdef::text:
 				return '<input id="'.$k.'" type=text name="'.$k.'" value="'.$val4Input.'">';
+			case sooh_formdef::datepicker:
+				return '<input id="'.$k.'" type=text name="'.$k.'" value="'.$val4Input.'">';
 			case sooh_formdef::passwd:
 				return '<input id="'.$k.'" type=password name="'.$k.'" value="'.$val4Input.'">';
 			case sooh_formdef::constval:
@@ -41,7 +43,7 @@ class Renderer
 					}
 				}
 				if(!$found){
-					throw new \ErrorException($val4Input.' not found in options');
+					throw new \ErrorException($val4Input.' not found in form-select-options');
 				}
 				return $str.'</select>';
 			case sooh_formdef::date:
@@ -79,9 +81,10 @@ class Renderer
 	/**
 	 * 返回  <form action=xxx method=get ....>
 	 * @param Broker $form
+	 * @param string $otherHTML 其他的要写的css之类的
 	 * @return type
 	 */
-	public function htmlFormTag($form)
+	public function htmlFormTag($form,$otherHTML=null)
 	{
 		$str = "<form action=\"{$form->url}\"".(empty($form->html_id)?'':" id=\"{$form->html_id}\"");
 		if($form->method=='get'||$form->method=='post'){
@@ -91,14 +94,37 @@ class Renderer
 		}else{
 			$str.=" method=\"get\"";
 		}
-		return $str.">";
+
+		
+		list($urlBase,$urlArg) = explode('?', $form->url);
+		
+		$str = "<form action=\"$urlBase\"".(empty($form->html_id)?'':" id=\"$form->html_id\"");
+		$method=  strtolower($form->method);
+		if($method=='get'||$method=='post'){
+			$str.=" method=\"$method\"";
+		}elseif($method=='upload'){
+			$str.=" method=\"post\" enctype=\"multipart/form-data\"";
+		}else{
+			$str.=" method=\"get\"";
+		}
+		if($otherHTML!==null){
+			$str.=" $otherHTML";
+		}
+		$str.=">";
+		if(!empty($urlArg)){
+			parse_str($urlArg, $method);
+			foreach($method as $k=>$v){
+				$str.="<input type=\"hidden\" name=\"$k\" value=\"".htmlspecialchars($v)."\">";
+			}
+		}
+		return $str;
 	}
 	
-	public function htmlFormButton($title,$type="submit",$other=null)
+	public function htmlFormButton($title,$type="submit")
 	{
 		$type=  strtolower($type);
 		if($type=='button'||$type=='reset'||$type='submit'){
-			return "<input type=\"$type\" value=\"$title\" $other>";
+			return "<input type=\"$type\" value=\"$title\">";
 		}else{
 			throw new \ErrorException('button type error:'.$type);
 		}
