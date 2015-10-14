@@ -153,4 +153,8 @@ class Time
 	public $hour;
 	public $minute;
 	public $second;
+	public function ymdhis()
+	{
+		return $this->YmdFull.sprintf('%06d',$this->his);
+	}
 }
