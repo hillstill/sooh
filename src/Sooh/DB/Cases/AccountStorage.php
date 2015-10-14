@@ -5,22 +5,24 @@ namespace Sooh\DB\Cases;
  *
  * @author Simon Wang <hillstill_simon@163.com>
  */
-class AccountStorage extends \Sooh\DB\Base\KVObj{
+class AccountStorage extends \Sooh\DB\Base\KVObj
+{
 	//针对缓存，非缓存情况下具体的表的名字
-	protected static function splitedTbName($n,$isCache)
+	protected static function splitedTbName($n, $isCache)
 	{
 //		if($isCache)return 'tb_test_cache_'.($n % static::numToSplit());
 //		else 
-		return 'tb_accounts_'.($n % static::numToSplit());
+		return 'tb_accounts_' . ($n % static::numToSplit());
 	}
 
 	/**
 	 * @return AccountStorage
 	 */
-	public static function getCopy($account,$camefrom='local')
+	public static function getCopy($accountId)
 	{
-		return parent::getCopy(array('camefrom'=>$camefrom,'loginname'=>$account));
+		return parent::getCopy(array('accountId' => $accountId));
 	}
+
 	/**
 	 * 修改密码
 	 * @param string $accountname
@@ -29,18 +31,18 @@ class AccountStorage extends \Sooh\DB\Base\KVObj{
 	 * @param array $customArgs 附带修改什么
 	 * @return boolean
 	 */
-	public function resetPWD($password,$customArgs=array())
+	public function resetPWD($password, $customArgs = array())
 	{
-		$cmp = md5($password.$this->getField('passwd_salt'));
+		$cmp = md5($password . $this->getField('passwdSalt'));
 		$this->setField('passwd', $cmp);
-		foreach($customArgs as $k=>$v){
+		foreach ($customArgs as $k => $v) {
 			$this->setField($k, $v);
 		}
-		try{
+		try {
 			$this->update();
 			return true;
 		} catch (\ErrorException $ex) {
-			error_log($ex->getMessage()."\n".$ex->getTraceAsString());
+			error_log($ex->getMessage() . "\n" . $ex->getTraceAsString());
 			return false;
 		}
 	}
