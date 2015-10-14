@@ -31,6 +31,9 @@ class Data {
 		if(self::$_instance===null){
 			static::$_instance = new \Sooh\Base\Session\Data;
 			static::$_instance->sessionId = self::getSessId();
+			if($storage===null){
+				throw new \Sooh\Base\ErrException('Session_data created on storage=null');
+			}
 			static::$_instance->storage = $storage;
 		}
 		return static::$_instance;
@@ -42,15 +45,13 @@ class Data {
 	 */
 	public static function getSessId()
 	{
-		if(isset($_COOKIE[self::SessionIdName])){
-			return $_COOKIE[self::SessionIdName];
-		}else{
-			
+		if(empty($_COOKIE[self::SessionIdName])){
 			$_COOKIE[self::SessionIdName] = md5(microtime(true).\Sooh\Base\Tools::remoteIP());
 			$cookieDomain=  \Sooh\Base\Ini::getInstance()->cookieDomain();
 			
 			setcookie(self::SessionIdName, $_COOKIE[self::SessionIdName], time()+315360000, '/', $cookieDomain);
 		}
+		return $_COOKIE[self::SessionIdName];
 	}
 
 	protected $timestamp;
@@ -68,7 +69,7 @@ class Data {
 	{
 		if($this->sessionArr===null){
 			$tmp = $this->storage->load($this->sessionId);
-			if(empty($tmp)){
+			if(empty($tmp) || empty($tmp['trans'])){
 				$this->record=array('sessionId'=>$this->sessionId,);
 				$this->sessionArr=array();
 			}else{
@@ -77,7 +78,6 @@ class Data {
 			}
 			$this->timestamp = \Sooh\Base\Time::getInstance()->timestamp(); 
 			\Sooh\Base\Ini::registerShutdown(array($this,'shutdown'), 'sessionOnShutdown');
-			//error_log(__CLASS__.'->'.__FUNCTION__.':shutdown registered,'.\Sooh\DB\Broker::lastCmd().'and array='.  var_export($this->record,true));
 		}
 	}
 
@@ -116,9 +116,13 @@ class Data {
 	{
 		$this->start();
 		$this->changed=true;
-		$this->sessionArr[$k] = $v;
-		if($expireAfter){
-			$this->sessionArr['__eXpIrE__'][$k]=$expireAfter+$this->timestamp;
+		if($v===null){
+			unset($this->sessionArr[$k],$this->sessionArr['__eXpIrE__'][$k]);
+		}else{
+			$this->sessionArr[$k] = $v;
+			if($expireAfter){
+				$this->sessionArr['__eXpIrE__'][$k]=$expireAfter+$this->timestamp;
+			}
 		}
 	}
 	/**

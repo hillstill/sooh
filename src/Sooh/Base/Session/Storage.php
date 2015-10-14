@@ -62,6 +62,7 @@ class Storage {
 			return $this->rpc->initArgs(array('sessionId'=>$sessionId,'sessData'=>$sessData,'trans'=>$trans))->send(__FUNCTION__);
 		}else{
 			try{
+				$err= new \Sooh\Base\ErrException('');
 				if (!empty($trans['sessionId']) && $trans['sessionId']!=$sessionId){
 					\Sooh\Base\Log\Data::error("ERROR on update session with sessionId dismatch: $sessionId",array('trans'=>$trans,'data'=>$sessData));
 					return 'error';
