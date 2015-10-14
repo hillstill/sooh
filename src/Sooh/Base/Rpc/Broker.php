@@ -99,7 +99,7 @@ class Broker {
 			$rand = array_rand($hosts);
 			$host = $hosts[$rand];
 			unset($hosts[$rand]);
-if('rpcservices'!=$this->final_service)error_log("###########{$this->final_protocol}:{$host}, {$this->final_service}, {$this->final_cmd},".  json_encode($this->final_args));
+//if('rpcservices'!=$this->final_service)error_log("###########{$this->final_protocol}:{$host}, {$this->final_service}, {$this->final_cmd},".  json_encode($this->final_args));
 			$ret = $this->getSender($this->final_protocol)->_send($host, $this->final_service, $this->final_cmd, $this->final_args,$timestamp,$this->clacSign($timestamp));
 			if(empty($ret)){
 				\Sooh\Base\Log\Data::error("found_rpc_server_down:".$host.' with cmd');
@@ -120,13 +120,19 @@ if('rpcservices'!=$this->final_service)error_log("###########{$this->final_proto
 	}
 	
 	/**
+	 * 获取rpc通讯协议对应的发送类
+	 * @param $protocol
 	 * @return \Sooh\Base\Rpc\Protocol\Interfaces;
 	 */
 	protected function getSender($protocol)
 	{
 		if(!isset(self::$_protocols[$protocol])){
-			$class = "\\Sooh\\Base\\Rpc\\Protocol\\".ucfirst($protocol);
-			self::$_protocols[$protocol] = new $class;
+			if(substr($protocol,0,1)=='\\'){
+				self::$_protocols[$protocol] = new $protocol();
+			}else{
+				$class = "\\Sooh\\Base\\Rpc\\Protocol\\".ucfirst($protocol);
+				self::$_protocols[$protocol] = new $class;
+			}
 		}
 		return self::$_protocols[$protocol];
 	}
