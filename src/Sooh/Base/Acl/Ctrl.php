@@ -50,7 +50,7 @@ class Ctrl {
 	 */
 	public function getMenuMine()
 	{
-		$root = \Sooh\DB\Acl\Menu::factory('root');
+		$root = \Sooh\Base\Acl\Menu::factory('root');
 		$lastMenu=null;
 
 		foreach($this->allMenu as $menu=>$r){
@@ -67,6 +67,7 @@ class Ctrl {
 					$root->addChild($lastMenu);
 					$lastMenu = \Sooh\Base\Acl\Menu::factory($mainMenu);
 				}
+				$options['MCA']="{$mod}_{$ctrl}_{$act}";
 				$lastMenu->addChild($subMenu, $url, $options);
 			}
 		}
@@ -100,6 +101,7 @@ class Ctrl {
 				$lastMenu = \Sooh\Base\Acl\Menu::factory($mainMenu);
 			}
 			$options['_ModCtrl_'] = "$mod.$ctrl";
+			$options['MCA']="{$mod}_{$ctrl}_{$act}";
 			$lastMenu->addChild($subMenu, $url, $options);
 		}
 		if($lastMenu!==null){
@@ -113,7 +115,13 @@ class Ctrl {
 	{
 		$ks = self::_fromString($str);
 		foreach($ks as $k){
-			$this->rights[strtolower($k)]=1;
+			$k = strtolower($k);
+			$tmp = explode('.', $k);
+			if(sizeof($tmp)==1){
+				$this->rights[$k.'.*']=1;
+			}else{
+				$this->rights[$k]=1;
+			}
 		}
 	}
 	public static function _fromString($str)
@@ -128,6 +136,14 @@ class Ctrl {
 	}
 	public function hasRightsFor($module,$ctrl)
 	{
-		return isset($this->rights[strtolower("$module.$ctrl")]);
+		if(true===isset($this->rights[strtolower("$module.$ctrl")])){
+			return true;
+		}elseif(true===isset($this->rights[strtolower("$module.*")])){
+			return true;
+		}elseif(true===isset($this->rights[strtolower("*.*")])){
+			return true;
+		}else{
+			return false;
+		}
 	}
 }
