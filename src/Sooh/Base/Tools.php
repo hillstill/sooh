@@ -17,10 +17,10 @@ class Tools {
 		elseif(is_string($args))$uri=$args;
 		else throw new ErrorException('unsupport args for sooh_uri');
 		if(!defined('SOOH_INDEX_FILE'))define ('SOOH_INDEX_FILE', 'index.php');
-		if(defined('SOOH_ROUTE_VAR')){//!empty($_REQUEST[SOOH_ROUTE_VAR]) && count(explode('/', $_REQUEST[SOOH_ROUTE_VAR]))>1
-			$uri = $ini->get ('request.baseUri').'/'.SOOH_INDEX_FILE.'?'.SOOH_ROUTE_VAR."=$modNew/$ctrlNew/$actNew&$uri";
-		}else{
+		if(!defined('SOOH_ROUTE_VAR') || defined('SOOH_USE_REWRITE')){//!empty($_REQUEST[SOOH_ROUTE_VAR]) && count(explode('/', $_REQUEST[SOOH_ROUTE_VAR]))>1
 			$uri = $ini->get ('request.baseUri').'/'."$modNew/$ctrlNew/$actNew?$uri";
+		}else{
+			$uri = $ini->get ('request.baseUri').'/'.SOOH_INDEX_FILE.'?'.SOOH_ROUTE_VAR."=$modNew/$ctrlNew/$actNew&$uri";
 		}
 		return $uri;
 	}
