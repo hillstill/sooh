@@ -161,7 +161,10 @@ abstract class KVObj
 	 * 拆分成几个表
 	 * @return int
 	 */
-	protected static function numToSplit(){return 1;}
+	protected static function numToSplit(){
+		$dbByObj = static::idFor_dbByObj_InConf(false);
+		return \Sooh\Base\Ini::getInstance()->get('tbByObj.'.$dbByObj,1);
+	}
 	/**
 	 * 根据拆分id，确认实际的表名
 	 * @param int $n
@@ -193,7 +196,7 @@ abstract class KVObj
 	protected static $tmpId=0;
 	protected static function idFor_dbByObj_InConf($isCache)
 	{
-		return 'default';
+		return 'default'.($isCache?"cache":'');
 	}
 	protected static function getDBAndTbNameById(&$tbnameToSet,$splitedId,$isCache=false)
 	{
@@ -265,8 +268,11 @@ abstract class KVObj
 	}
 	public function tbname()
 	{
-		if($this->tbname!==null)return $this->tbname;
-		else static::getDBAndTbName($this->tbname, $this->pkey,false);
+		if($this->tbname!==null){
+			return $this->tbname;
+		}else{
+			static::getDBAndTbName($this->tbname, $this->pkey,false);
+		}
 		return $this->tbname;
 	}
 	/**
@@ -284,7 +290,6 @@ abstract class KVObj
 	 */
 	public function reload()
 	{
-		$class = get_called_class();
 		if(!empty($this->pkey) && !empty($this->loads)){
 			//deal with cache
 			if($this->cacheWhenVerIDIs){
@@ -668,7 +673,7 @@ abstract class KVObj
 	{
 		$dt = \Sooh\Base\Time::getInstance();
 		if(''!==($lockMsg=$this->isLocked())){
-			error_log('locked already');
+			error_log('locked already:'.  get_called_class().' '.  json_encode($this->pkey));
 			return false;
 		}else{
 //			$err= new \ErrorException('record lock:'.$this->r[$this->fieldName_verid]);
@@ -729,6 +734,14 @@ abstract class KVObj
 		}else{
 			return false;
 		}
+	}
+	/**
+	 * 获取当前的主键
+	 * @return array
+	 */
+	public function getPKey()
+	{
+		return $this->pkey;
 	}
 	/**
 	 * 获取某个字段的值
