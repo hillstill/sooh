@@ -9,6 +9,7 @@ class ErrException extends \ErrorException{
 	const msgErrorArg='arg_error';
 	const msgServerBusy='server_busy';
 	const msgLocked='record_locked';
+	const msgNotEnough='num_not_enough';
 	public static function factory($msg,$code)
 	{
 		$e = new ErrException($message, $code);
