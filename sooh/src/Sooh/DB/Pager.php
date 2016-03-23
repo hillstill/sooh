@@ -1,7 +1,7 @@
 <?php
 namespace Sooh\DB;
 /**
- * Pager，内部pageid从0开始
+ * Pager，内部pageid从0开始，默认每页10条记录
  *
  * @author Simon Wang <hillstill_simon@163.com>
  */
@@ -33,7 +33,7 @@ class Pager {
 			}
 		}
 		if(empty($this->page_size)){
-			$this->page_size = 10;
+			$this->enumPagesize = $this->page_size = 10;
 		}
 	}
 	/**
