@@ -136,8 +136,17 @@ class Broker {
 				if(!is_a($_ignore_,'\Sooh\Base\Form\Item')){
 					$this->values[$k]=$inputVal;
 				}else{
+					if($_ignore_->verify['type']=='int'){
+						$isDate = $_ignore_->input()==\Sooh\Base\Form\Item::datepicker || $_ignore_->input()==\Sooh\Base\Form\Item::date;
+						if($isDate){
+							if(!is_numeric($inputVal)){
+								$inputVal = strtotime($inputVal);
+							}
+						}
+					}
+					
 					if($_ignore_->input()==\Sooh\Base\Form\Item::constval){
-						$this->values[$k]=$_ignore_->value;
+						$this->values[$k]=$inputVal;
 					}else {
 						$err = $_ignore_->checkUserInput($inputVal,$_ignore_->capt,$errClassName);
 						if($err===null){
@@ -259,6 +268,18 @@ class Broker {
 		
 		return $this->values;
 	}
+	/**
+	 * 重新设置获取的values的值（慎用）
+	 * @param string $k
+	 * @param mixed $v
+	 */
+	public function resetValue($k,$v)
+	{
+		if(is_scalar($this->items[$k])){
+			$this->items[$k]=$v;
+		}
+		$this->values[$k]=$v;
+	}
 	protected $crudType=self::type_s;
 	/**
 	 * 
@@ -307,7 +328,7 @@ class Broker {
 						$_ignore_->options->getPair($this->values,$this->crudType==self::type_s);
 					}
 					$_ignore_->valForInput=$this->valForInput($_ignore_->value,$k);
-					$input = $this->getRenderer()->render($k, $_ignore_, $inputType);
+					$input = $this->getRenderer()->render($k, $_ignore_, $inputType , $_ignore_->dataRule);
 				}
 			}
 			return str_replace(array('{capt}','{input}'), array($_ignore_->capt,$input), $tpl);
