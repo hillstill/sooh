@@ -51,11 +51,13 @@ class Storage {
 			if(!$obj->exists()){
 				return array('data'=>array(),'trans'=>array());
 			}else{
-				return array('data'=> $obj->getSessionData(),'trans'=>$obj->getArrayTrans());
+				$data = $obj->getSessionData();
+				$this->md5Last = md5(json_encode($data));
+				return array('data'=> $data,'trans'=>$obj->getArrayTrans());
 			}
 		}
 	}
-	
+	protected $md5Last = '';
 	public function update($sessionId,$sessData,$trans)
 	{
 		if($this->rpc!==null){
@@ -73,8 +75,14 @@ class Storage {
 						$obj->setVerId($trans['iRecordVerID']);
 					}
 					//unset($trans['iRecordVerID']);
-					$obj->setSessionData($sessData);
-					$obj->update();
+					ksort($sessData);
+					$md5 = md5(json_encode($sessData));
+//					error_log('[TRACE-session '.$_COOKIE['SoohSessId'].' storage] md5_'.($md5!=$this->md5Last?'NE':'EQ').' old='.$this->md5Last.' vs new '.$md5);
+					if($md5!=$this->md5Last){
+						$obj->setSessionData($sessData);
+						$obj->setField('lastUpdate', time());
+						$obj->update();
+					}
 					//error_log(">>>>>>>>>>>session>>>$sessionId\n".  var_export($sessData,true)."\n".  var_export($trans,true));
 					return 'done';
 				}

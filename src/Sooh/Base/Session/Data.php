@@ -68,19 +68,42 @@ class Data {
 	protected function start()
 	{
 		if($this->sessionArr===null){
+			$this->timestamp = \Sooh\Base\Time::getInstance()->timestamp(); 
 			$tmp = $this->storage->load($this->sessionId);
 			if(empty($tmp) || empty($tmp['trans'])){
 				$this->record=array('sessionId'=>$this->sessionId,);
 				$this->sessionArr=array();
+				//error_log("[TRACE-session ".$_COOKIE['SoohSessId']." data] skip init");
 			}else{
 				$this->record = $tmp['trans'];
 				$this->sessionArr = $tmp['data'];
+				if($this->get('accountId')){
+					$secLast = $this->sessionArr['__dTaCcOuNt__']-0;
+					$secPast = $this->timestamp-$secLast;
+					if($secPast>300){
+						$this->sessionArr['__eXpIrE__']['accountId']+=min([$secPast,900]);
+						$this->sessionArr['__dTaCcOuNt__']=$this->timestamp;
+						$this->changed=true;
+						//error_log("[TRACE-session ".$_COOKIE['SoohSessId']." data] update expire as secPast=$secPast");
+					}else{
+						//error_log("[TRACE-session ".$_COOKIE['SoohSessId']." data] skip secPast=$secPast");
+					}
+				}else{
+					//error_log("[TRACE-session ".$_COOKIE['SoohSessId']." data] skip not login");
+				}
 			}
-			$this->timestamp = \Sooh\Base\Time::getInstance()->timestamp(); 
+			
 			\Sooh\Base\Ini::registerShutdown(array($this,'shutdown'), 'sessionOnShutdown');
 		}
 	}
-
+	/**
+	 * session是否已经激活
+	 * @return bool
+	 */
+	public function isStarted()
+	{
+		return !empty($this->sessionArr);
+	}
 	protected $record=null;
 	/**
 	 * get session value
@@ -122,7 +145,23 @@ class Data {
 			$this->sessionArr[$k] = $v;
 			if($expireAfter){
 				$this->sessionArr['__eXpIrE__'][$k]=$expireAfter+$this->timestamp;
+			}else{
+				unset($this->sessionArr['__eXpIrE__'][$k]);
 			}
+		}
+	}
+	/**
+	 * 获取指定key的剩余有效时长（单位秒）
+	 * @param type $k
+	 * @return type
+	 * @throws \ErrorException
+	 */
+	protected function expireLeft($k)
+	{
+		if(!isset($this->sessionArr['__eXpIrE__'][$k])){
+			throw new \ErrorException('expire for '.$k.' is NOT set');
+		}else{
+			return $this->sessionArr['__eXpIrE__'][$k]-$this->timestamp;
 		}
 	}
 	/**
