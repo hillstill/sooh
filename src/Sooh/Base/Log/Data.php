@@ -120,12 +120,16 @@ class Data {
 	public $target='';
 	/**
 	 * @var  int
-	 */		
+	 */
 	public $num=0;
 	/**
 	 * @var  VARCHAR(512)
 	 */
 	public $ext='';
+	/**
+	 * @var VARCHAR(16)
+	 */
+	public $clientVer='';
 	/**
 	 * @var  VARCHAR(128)
 	 */
@@ -137,10 +141,16 @@ class Data {
 	public $narg2=0;
 	public $narg3=0;
 	/**
-	 * @var  VARCHAR(500,1000,2000)
+	 * @var  VARCHAR(500)
 	 */
 	public $sarg1='';
+	/**
+	 * @var  VARCHAR(1000)
+	 */
 	public $sarg2='';
+	/**
+	 * @var  VARCHAR(2000)
+	 */
 	public $sarg3='';
 
 	public $ip;
@@ -285,6 +295,7 @@ class Data {
 			'num'=>$this->num,
 			'ext'=>$this->ext,
 			'ret'=>$this->ret,
+			'clientVer'=>$this->clientVer,
 			'narg1'=>$this->narg1,
 			'narg2'=>$this->narg2,
 			'narg3'=>$this->narg3,
