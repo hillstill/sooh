@@ -1,7 +1,8 @@
 <?php
 namespace Sooh\DB\Base;
 /**
- * @author Simon Wang <sooh_simon@163.com> 
+ * field define
+ * @author Simon Wang <hillstill_simon@163.com> 
  */
 class Field 
 {

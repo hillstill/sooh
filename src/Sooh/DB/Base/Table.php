@@ -1,7 +1,8 @@
 <?php
 namespace Sooh\DB\Base;
 /**
- * @author Simon Wang <sooh_simon@163.com> 
+ * 拼sql语句的时候记录部件的类
+ * @author Simon Wang <hillstill_simon@163.com> 
  */
 class Table
 {

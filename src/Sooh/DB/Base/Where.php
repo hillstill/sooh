@@ -1,7 +1,8 @@
 <?php
 namespace Sooh\DB\Base;
 /**
- * @author Simon Wang <sooh_simon@163.com> 
+ * sql 的 where 拼裝器
+ * @author Simon Wang <hillstill_simon@163.com> 
  */
 class Where 
 	implements \Sooh\DB\Interfaces\Where

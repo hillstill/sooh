@@ -14,7 +14,7 @@ use \Sooh\DB\Broker as sooh_dbBroker;
 /**
  * jsonencode for array field
  * 数组字段会调用jsonencde
- * @author Simon Wang <sooh_simon@163.com> 
+ * @author Simon Wang <hillstill_simon@163.com> 
  */
 abstract class KVObj
 {
@@ -163,7 +163,7 @@ abstract class KVObj
 	 */
 	protected static function numToSplit(){
 		$dbByObj = static::idFor_dbByObj_InConf(false);
-		return \Sooh\Base\Ini::getInstance()->get('tbByObj.'.$dbByObj,1);
+		return \Sooh\Base\Ini::getInstance()->get('dbByObj.'.$dbByObj.'.0',1);
 	}
 	/**
 	 * 根据拆分id，确认实际的表名
@@ -204,8 +204,8 @@ abstract class KVObj
 		$ini = sooh_ini::getInstance();
 		$dbId = $ini->get('dbByObj.'.$dbByObj);
 		if(is_array($dbId)){
-			$i = $splitedId % sizeof($dbId);
-			$confIDStr = 'dbConf.'.$dbId[$i];
+			$i = $splitedId % (sizeof($dbId)-1);
+			$confIDStr = 'dbConf.'.$dbId[$i+1];
 		}elseif(!empty($dbId)){
 			$confIDStr = 'dbConf.'.$dbId;
 		}else{
@@ -213,7 +213,12 @@ abstract class KVObj
 			if(empty($tmp)){
 				$confIDStr = 'dbConf.default';
 			}else{
-				$confIDStr = 'dbConf.'.$tmp;
+				if(is_array($tmp)){
+					$i = $splitedId % (sizeof($tmp)-1);
+					$confIDStr = 'dbConf.'.$tmp[$i+1];
+				}else{
+					$confIDStr = 'dbConf.'.$tmp;
+				}
 			}
 		}
 		$conf = $ini->get($confIDStr);
@@ -387,6 +392,46 @@ abstract class KVObj
 			return static::$tmpVar['rs'];
 		}
 	}
+
+	public static function loopByFields($callback_db_tb, $fields, $dbFunc, $order)
+	{
+		$total = static::numToSplit();
+		$tbName=null;
+		if(is_array($callback_db_tb) || is_string($callback_db_tb))	{
+
+			for($i=0;$i<$total;$i++){
+				$db = static::getDBAndTbNameById($tbName, $i,false);
+				call_user_func ($callback_db_tb, $db, $tbName, $fields, $dbFunc, $order);
+			}
+		}else{
+			for($i=0;$i<$total;$i++){
+				$db = static::getDBAndTbNameById($tbName, $i,false);
+				$callback_db_tb($this, $db, $tbName, $fields, $dbFunc, $order);
+			}
+		}
+	}
+	/**
+	 * 根据字段，数据库函数遍历 有些方法不支持 getPair就是不支持的典型
+	 * @param unknown $arrWhere
+	 * @param string $_ignore_
+	 * @param string $fields
+	 * @param string $dbFunc
+	 */
+	public static function loopFindRecordsByFields($arrWhere, $_ignore_ = null, $fields='*', $dbFunc='getRecords', $orderBy=null)
+	{
+		if(!is_array($arrWhere)){
+			$rs = $arrWhere->$dbFunc($_ignore_,$fields,static::$tmpVar['where'], $orderBy);
+			static::$tmpVar['rs'] = array_merge(static::$tmpVar['rs'],$rs);
+		}else{
+			static::$tmpVar = array('where'=>$arrWhere,'rs'=>array(), 'dbFunc'=>$dbFunc, 'order'=>$orderBy);
+			$func = get_called_class().'::'.__FUNCTION__;
+			self::loopByFields($func, $fields, $dbFunc, $orderBy);
+			return static::$tmpVar['rs'];
+		}
+	}
+
+
+
 	/**
 	 * 分表后，查询结果分页很复杂，提供这个函数解决部分情况：
 	 * a)以唯一索引（1个或2个字段，更多的暂不支持：2项效率高些，代码也好写，呵呵）作为排序条件，可以完美实现分页
@@ -498,7 +543,7 @@ abstract class KVObj
 		return array('lastPage'=>$lastPage,'records'=>$records);
 	}
 	
-	protected function loopGetRecordsPage_buildWhere($sort_field_type,$lastPage,$pageForward){
+	protected static function loopGetRecordsPage_buildWhere($sort_field_type,$lastPage,$pageForward){
 		$where=array();
 		$sortMethod = array(
 			array('sort'=>'<','rsort'=>'>'),//反向翻页
@@ -555,7 +600,7 @@ abstract class KVObj
 		//var_dump($where);
 		return $where;
 	}
-	protected function loopGetRecordsPage_mergeWhere($sys,$usr)
+	protected static function loopGetRecordsPage_mergeWhere($sys,$usr)
 	{
 		foreach($usr as $k=>$v){
 			if(isset($sys[$k])){
@@ -584,7 +629,7 @@ abstract class KVObj
 		}
 		return $sys;
 	}
-	protected function loopGetRecordsPage_sortGetPage($sortField_sortType,$pageForward)
+	protected static function loopGetRecordsPage_sortGetPage($sortField_sortType,$pageForward)
 	{
 		$all=array();
 		switch (sizeof($sortField_sortType)){
@@ -652,7 +697,7 @@ abstract class KVObj
 	 * @param \Sooh\DB\Interfaces\All $db
 	 * @param string $tb
 	 */
-	protected function loopGetRecordsPage_getRecords($db,$tb)
+	protected static function loopGetRecordsPage_getRecords($db,$tb)
 	{
 		
 		foreach(static::$tmpVar['where'] as $realWhere){
@@ -847,7 +892,10 @@ abstract class KVObj
 		}
 		return $tmp;
 	}
-
+	public static function nextVerId($curId)
+	{
+		return ($curId>=99999999)?1:$curId+1;
+	}
 	protected function trySave()
 	{
 		$tbCache=null;
@@ -886,7 +934,7 @@ abstract class KVObj
 					self::$_copies[$class][$md5New] = $this;
 					$class = get_class();
 				}
-				
+				return 1;
 			}else{
 				$verCurrent = array($this->fieldName_verid=>$this->r[$this->fieldName_verid]);
 				$whereForUpdate = $this->pkey;
@@ -905,23 +953,24 @@ abstract class KVObj
 				if($this->cacheWhenVerIDIs<=1){
 					if($db->kvoFieldSupport()){
 						$fields = $this->fieldsUpds();
-						$db->kvoUpdate($this->tbname, $fields, $whereForUpdate, $verCurrent);
+						$_ret = $db->kvoUpdate($this->tbname, $fields, $whereForUpdate, $verCurrent);
 					}else{
-						$db->kvoUpdate($this->tbname, $this->r, $whereForUpdate, $verCurrent);
+						$_ret = $db->kvoUpdate($this->tbname, $this->r, $whereForUpdate, $verCurrent);
 					}
-					$this->r[$this->fieldName_verid]++;
-					if($this->r[$this->fieldName_verid]>99999990){
-						$this->r[$this->fieldName_verid]=1;
-					}
-					if($this->cacheWhenVerIDIs){
-						if($db->kvoFieldSupport()==true){
-							$all = $dbCache->kvoLoad($tbCache, '*', $this->pkey);
-						}else{
-							$all=$this->r;
-						}
-						$dbCache->kvoUpdate($tbCache, $all, $whereForUpdate, $verCurrent,true);
-					}
-				}else{
+					$this->r[$this->fieldName_verid]= self::nextVerId(current($verCurrent));
+                    if($this->cacheWhenVerIDIs){
+                        $fields=[];
+                        foreach($this->r as $k=>$r){
+                            if(!is_array($r)){
+                                $fields[$k]=$r;
+                            }else {
+                                $fields[$k] = json_encode($r);
+                            }
+                        }
+                        $dbCache->kvoUpdate($tbCache, $fields, $whereForUpdate, [key($verCurrent)=>self::nextVerId(current($verCurrent))],true);
+                    }
+
+                }else{
 					if($dbCache->kvoFieldSupport()){
 						$dbCache->kvoUpdate($tbCache, $this->fieldsUpds(), $whereForUpdate, $verCurrent);
 					}else{
@@ -931,7 +980,7 @@ abstract class KVObj
 					if($this->r[$this->fieldName_verid]%$this->cacheWhenVerIDIs==0){
 						try{
 							$all = $dbCache->kvoLoad($tbCache, '*', $this->pkey);
-							$db->kvoUpdate($this->tbname, $all, $whereForUpdate, $verCurrent,true);
+							$_ret = $db->kvoUpdate($this->tbname, $all, $whereForUpdate, $verCurrent,true);
 						}catch(\ErrorException $e){
 							error_log("fatal error: $class : update disk failed after cache updated");
 							throw $e;
@@ -940,6 +989,7 @@ abstract class KVObj
 				}
 			}
 			$this->lockedByMe=false;
+			return $_ret;
 		}catch(\ErrorException $e){//key duplicate -> add failed
 			throw $e;
 		}
@@ -964,9 +1014,9 @@ abstract class KVObj
 
 			try{
 				$this->callbackOn(self::onBeforeSave);
-				$this->trySave();
+				$_ret = $this->trySave();
 				$this->callbackOn(self::onAfterSave);
-				return;
+				return $_ret;
 			}catch(\ErrorException $e){
 				if($callback!==null){
 					$retry++;
