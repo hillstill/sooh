@@ -1,17 +1,10 @@
 <?php
-
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 namespace Sooh\DB\Base;
 
 /**
- * Description of SQLDefine
+ * 拼sql语句的时候记录部件的类
  *
- * @author wang.ning
+ * @author Simon Wang <hillstill_simon@163.com> 
  */
 
 
@@ -28,6 +21,16 @@ class SQLDefine {
 	public $join='';
 	public $result;//????
 	public $strTrace;//'select * from tb...';
+	
+	/**
+	 * 返回下一个循环计数的值（1 - 99999999）
+	 * @param int $cur
+	 * @return int
+	 */
+	public static function nextCircledInt($cur)
+	{
+	    return ($cur>=99999999)?1:$cur+1;
+	}
 	
 	public function resetForNext()
 	{
