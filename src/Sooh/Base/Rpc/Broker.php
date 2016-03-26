@@ -57,6 +57,7 @@ class Broker {
 	protected $final_args;
 	protected $final_key;
 	protected $final_hosts;
+	public static $_rpcServices;
 	/**
 	 * 获取PRC配置参数
 	 * @param string $serviceName 
@@ -65,6 +66,9 @@ class Broker {
 	 */
 	public static function getRpcIni($serviceName)
 	{
+		if(self::$_rpcServices!==null){
+			return self::$_rpcServices->fetchini($serviceName);
+		}
 		$ini = \Sooh\Base\Ini::getInstance();
 		if(empty(self::$_instances['_RPC_ROUTE_'])){
 			self::$_instances['_RPC_ROUTE_'] = new Broker;
@@ -99,8 +103,10 @@ class Broker {
 			$rand = array_rand($hosts);
 			$host = $hosts[$rand];
 			unset($hosts[$rand]);
-//if('rpcservices'!=$this->final_service)error_log("###########{$this->final_protocol}:{$host}, {$this->final_service}, {$this->final_cmd},".  json_encode($this->final_args));
+//if('rpcservices'!=$this->final_service) 
+//error_log("#######rpc-call####{$this->final_protocol}:{$host}, {$this->final_service}, {$this->final_cmd},".  json_encode($this->final_args));
 			$ret = $this->getSender($this->final_protocol)->_send($host, $this->final_service, $this->final_cmd, $this->final_args,$timestamp,$this->clacSign($timestamp));
+//error_log("#######rpc-ret####".json_encode($ret));
 			if(empty($ret)){
 				\Sooh\Base\Log\Data::error("found_rpc_server_down:".$host.' with cmd');
 			}else{
