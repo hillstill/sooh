@@ -78,6 +78,9 @@ class Task {
 	 * 资源释放函数
 	 */
 	public function free(){}	
+	/**
+	 * 内部值：最后一次执行的时间
+	 */
 	protected $_lastRun = 0;
 
 	/**

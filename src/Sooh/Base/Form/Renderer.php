@@ -43,7 +43,7 @@ class Renderer
 					}
 				}
 				if(!$found){
-					throw new \ErrorException($val4Input.' not found in form-select-options');
+					throw new \ErrorException($val4Input.' not found in form-select-options of '.$k);
 				}
 				return $str.'</select>';
 			case sooh_formdef::date:
