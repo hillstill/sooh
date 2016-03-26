@@ -13,7 +13,21 @@ class Error extends \ErrorException {
 	
 	public static function factory($fieldTitle,$errCode,$arrParam=null)
 	{
-		$err = new Error($fieldTitle, $errCode);
+		switch($errCode){
+			case self::REQUIRED:
+				$msg = $fieldTitle.' is required';
+				break;
+			case self::STR_LENGTH:
+				$msg = 'length of '.$fieldTitle.' needs to be '.$arrParam['min']. ' to '.$arrParam['max'];
+				break;
+			case self::INT_OVERFLOW:
+				$msg = $fieldTitle.' needs  between '.$arrParam['min']. ' to '.$arrParam['max'];
+				break;
+			default:
+				$msg = 'error['.$errCode.'] on '.$fieldTitle;
+				break;
+		}
+		$err = new Error($msg, $errCode);
 		$err->param=$arrParam;
 		return $err;
 	}
@@ -29,15 +43,4 @@ class Error extends \ErrorException {
 		return array('min'=>$min,'max'=>$max);
 	}
 	
-	public function getMessage()
-	{
-		switch($this->getCode()){
-			case self::REQUIRED:
-				return parent::getMessage().' is required';
-			case self::STR_LENGTH:
-				return 'length of '.parent::getMessage().' needs to be '.$this->param['min']. ' to '.$this->param['max'];
-			case self::INT_OVERFLOW:
-				return parent::getMessage().' needs  between '.$this->param['min']. ' to '.$this->param['max'];
-		}
-	}
 }
