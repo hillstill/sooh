@@ -30,13 +30,7 @@ class Mysql implements \Sooh\DB\Interfaces\All
 				throw new \Sooh\Base\ErrException('update failed, pkey error?');
 			}
 		}else{
-			if($v>99999999){
-				$fields[$k]=substr($v,-8);
-			}elseif($v==99999999){
-				$fields[$k]=1;
-			}else{
-				$fields[$k]=$v+1;
-			}
+			$fields[$k] = \Sooh\DB\Base\SQLDefine::nextCircledInt($v);
 			$where[$k]=$v;
 			$ret = $this->updRecords($obj, $fields,$where);
 			if($ret!==1){
