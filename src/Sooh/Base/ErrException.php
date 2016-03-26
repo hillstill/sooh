@@ -10,6 +10,11 @@ class ErrException extends \ErrorException{
 	const msgServerBusy='server_busy';
 	const msgLocked='record_locked';
 	const msgNotEnough='num_not_enough';
+
+	public function __construct($message = "", $code = 400, $severity = 1, $filename = __FILE__, $lineno = __LINE__, $previous=null) {
+		parent::__construct($message, $code, $severity, $filename, $lineno, $previous);
+	}
+
 	public static function factory($msg,$code)
 	{
 		$e = new ErrException($message, $code);
