@@ -1,10 +1,11 @@
 <?php
 namespace Sooh\DB;
 /**
- * Pager，内部pageid从0开始
+ * Pager，内部pageid从0开始，默认每页10条记录
  *
  * @author Simon Wang <hillstill_simon@163.com>
  */
+
 class Pager {
 	public $page_size=0;
 	public $page_count=0;
@@ -12,6 +13,7 @@ class Pager {
 	public $total;
 	public $enumPagesize='';
 	private $flgZeroBegin=0;
+	public $recordsSum=null;
 	public function __construct($pagesize,$pagesizes=array(),$zeroBegin=false) {
 		$this->flgZeroBegin=$zeroBegin;
 		if(empty($pagesizes)){
@@ -20,18 +22,18 @@ class Pager {
 			if(is_array($pagesizes)){
 				$this->enumPagesize=implode(',', $pagesizes);
 				if(empty($this->page_size)){
-					$this->page_size = current($pagesizes);
+					$this->page_size = $pagesize ? : current($pagesizes);
 				}
 			}else{
 				$this->enumPagesize = $pagesizes;
 				if(empty($this->page_size)){
 					$pagesizes = explode(',', $pagesizes);
-					$this->page_size = current($pagesizes);
+					$this->page_size = $pagesize ? : current($pagesizes);
 				}
 			}
 		}
 		if(empty($this->page_size)){
-			$this->page_size = 10;
+			$this->enumPagesize = $this->page_size = 10;
 		}
 	}
 	/**
