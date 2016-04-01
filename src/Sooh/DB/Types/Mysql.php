@@ -23,20 +23,39 @@ class Mysql implements \Sooh\DB\Interfaces\All
 		$v = current($verCurrent);
 		$where = $arrPkey;
 		if($override){
-			$fields[$k] = $v;
-			$where[$k.'<']=$v;
-			$ret = $this->updRecords($obj, $fields,$arrPkey);
+			
+			if(!empty($v) && !empty($fields[$k])){
+				if($fields[$k]>$v){
+					$where[$k.'<']=$fields[$k];
+				}else{
+					if($v-$fields[$k]>100000){//verid回滚情况
+						$tmp = $this->newWhereBuilder();
+						$tmp->init('AND',$obj);
+						$tmp->append($where);
+						$t22 = new \Sooh\DB\Base\Where('rand_'.rand(100000,999999));
+						$t22->init('OR');
+						$t22->append($k.'<',$fields[$k]);//小于当前值，大于上次的值
+						$t22->append($k.'>',$v);
+						$tmp->append(null, $t22);
+						$where = $tmp;
+					}else{
+						throw new \Sooh\Base\ErrException('update failed, verid error?');
+					}
+				}
+			}
+			$ret = $this->updRecords($obj, $fields,$where);
 			if(!$ret){
 				throw new \Sooh\Base\ErrException('update failed, pkey error?');
 			}
 		}else{
-			$fields[$k] = \Sooh\DB\Base\SQLDefine::nextCircledInt($v);
+			
 			$where[$k]=$v;
 			$ret = $this->updRecords($obj, $fields,$where);
 			if($ret!==1){
 				throw new \Sooh\Base\ErrException('update failed, verid changed?');
 			}
 		}
+		return $ret;
 	}
 	public function kvoNew($obj,$fields, $arrPkey,$verCurrent, $fieldAuto=null)
 	{
@@ -643,7 +662,7 @@ class Mysql implements \Sooh\DB\Interfaces\All
 							$groupby[]= $v;
 							break;
 						default:
-							$err = new \Sooh\Base\ErrException('unsupport:'.$orderby);
+							$err = new \Sooh\Base\ErrException('unsupport sql '.$k.':'.$orderby);
 							throw $err;
 					}
 				}
