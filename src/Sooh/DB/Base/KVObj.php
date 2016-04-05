@@ -14,7 +14,7 @@ use \Sooh\DB\Broker as sooh_dbBroker;
 /**
  * jsonencode for array field
  * 数组字段会调用jsonencde
- * @author Simon Wang <hillstill_simon@163.com> 
+ * @author Simon Wang <sooh_simon@163.com> 
  */
 abstract class KVObj
 {
@@ -890,6 +890,7 @@ abstract class KVObj
 		foreach($this->fieldsDatetime as $k){
 			$tmp[$k] = date('Y-m-d H:i:s',$tmp[$k]);
 		}
+		$tmp[$this->fieldName_verid] = self::nextVerId($this->r[$this->fieldName_verid]);
 		return $tmp;
 	}
 	public static function nextVerId($curId)
@@ -967,7 +968,7 @@ abstract class KVObj
                                 $fields[$k] = json_encode($r);
                             }
                         }
-                        $dbCache->kvoUpdate($tbCache, $fields, $whereForUpdate, [key($verCurrent)=>self::nextVerId(current($verCurrent))],true);
+                        $dbCache->kvoUpdate($tbCache, $fields, $whereForUpdate, $verCurrent,true);
                     }
 
                 }else{
@@ -976,7 +977,7 @@ abstract class KVObj
 					}else{
 						$dbCache->kvoUpdate($tbCache, $this->r, $whereForUpdate, $verCurrent);
 					}
-					$this->r[$this->fieldName_verid]++;
+					$this->r[$this->fieldName_verid]= self::nextVerId(current($verCurrent));
 					if($this->r[$this->fieldName_verid]%$this->cacheWhenVerIDIs==0){
 						try{
 							$all = $dbCache->kvoLoad($tbCache, '*', $this->pkey);
