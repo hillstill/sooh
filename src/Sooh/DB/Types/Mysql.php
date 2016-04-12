@@ -32,10 +32,10 @@ class Mysql implements \Sooh\DB\Interfaces\All
 						$tmp = $this->newWhereBuilder();
 						$tmp->init('AND',$obj);
 						$tmp->append($where);
-						$t22 = new \Sooh\DB\Base\Where('rand_'.rand(100000,999999));
+						$t22 = $this->newWhereBuilder();
 						$t22->init('OR');
 						$t22->append($k.'<',$fields[$k]);//小于当前值，大于上次的值
-						$t22->append($k.'>',$v);
+						$t22->append($k.']',$v);
 						$tmp->append(null, $t22);
 						$where = $tmp;
 					}else{
@@ -260,7 +260,6 @@ class Mysql implements \Sooh\DB\Interfaces\All
 		$this->_lastCmd->where = $this->_fmtWhere($where);
 		$this->_lastCmd->orderby = $other;
 		$this->_query(null);
-		$this->_chkErr();
 		$rs = mysqli_affected_rows($this->_connection);
 		return $rs==0?true:$rs;
 	}
@@ -394,7 +393,6 @@ class Mysql implements \Sooh\DB\Interfaces\All
 		}else{
 			throw new \Sooh\Base\ErrException("arg not support for ".__FUNCTION__.":". serialize($arr));
 		}
-		$this->_chkErr();
 		return $rs0;
 	}
 	public function fetchAssocThenFree($result)
@@ -715,6 +713,12 @@ class Mysql implements \Sooh\DB\Interfaces\All
 				}else {
 					$where=$this->newWhereBuilder()->init('AND',$this->objForCreateWhere)->append($where, null)->end();
 				}
+			}elseif(is_string ($where)){
+			    $cmp = strtoupper(substr(trim($where),0,6));
+			    if($cmp!=='WHERE '){
+			        throw new \Sooh\Base\ErrException('where struct not support');
+			    }
+			    $where = ' '.$where;
 			}elseif(is_scalar ($where)){
 				throw new \Sooh\Base\ErrException('where struct not support');
 			}else{
